@@ -101,8 +101,10 @@ class VisualContractOracle:
         ).to("cuda")
 
         generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
+        # Slice off the input tokens — generate() returns the full sequence by default
+        new_tokens = generated_ids[:, inputs.input_ids.shape[1]:]
         raw = self.processor.batch_decode(
-            generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
+            new_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
 
         return _parse_result(raw)
