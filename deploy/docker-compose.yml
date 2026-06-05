@@ -1,0 +1,68 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./eval_engine.db
+      - REDIS_URL=redis://redis:6379/0
+      - INFERENCE_BACKEND=local       # "local" | "vllm"
+      - VLLM_BASE_URL=http://vllm:8000/v1
+      - VLLM_API_KEY=token
+    volumes:
+      - ../adapters:/app/adapters
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    command: poetry run celery -A worker.tasks worker --loglevel=info
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./eval_engine.db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ../adapters:/app/adapters
+    depends_on:
+      - redis
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    command: >
+      --model Qwen/Qwen2.5-VL-7B-Instruct
+      --enable-lora
+      --max-loras 16
+      --max-cpu-loras 128
+      --max-lora-rank 64
+      --lora-modules
+        insurance_car=/adapters/insurance_car_v1
+        muni_road=/adapters/muni_road_v1
+        house_clean=/adapters/house_clean_v1
+    ports:
+      - "8001:8000"
+    volumes:
+      - ../adapters:/adapters
+    profiles:
+      - production
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
