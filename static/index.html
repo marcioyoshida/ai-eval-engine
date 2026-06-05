@@ -458,6 +458,98 @@
       white-space: pre;
     }
 
+    /* ── LoRA selector row ── */
+    .lora-select-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .lora-select-row select { flex: 1; }
+
+    .btn-icon {
+      width: 32px;
+      height: 34px;
+      flex-shrink: 0;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--primary);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .btn-icon:hover { background: var(--primary-glow); border-color: var(--primary); }
+
+    .btn-icon-sm {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    .btn-icon-sm:hover { color: var(--text); }
+
+    /* ── Inline LoRA register panel ── */
+    .lora-panel {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 16px;
+      margin-top: -4px;
+      margin-bottom: 14px;
+      border-top-left-radius: 0;
+    }
+
+    .lora-panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 14px;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: var(--r);
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+      margin-top: 2px;
+    }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-secondary:disabled { opacity: 0.4; cursor: default; }
+
+    /* Adapter status badge in selector options */
+    .adapter-status-tag {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -527,9 +619,58 @@
             <span class="hint">Minimum confidence to auto-pass (0.0 – 1.0)</span>
           </div>
           <div class="field">
-            <label for="c-lora">LoRA Adapter ID <span class="opt">(optional)</span></label>
-            <input type="text" id="c-lora" placeholder="e.g. muni_road_v4">
-            <span class="hint">Routes to a vLLM fine-tuned adapter</span>
+            <label>LoRA Adapter <span class="opt">(optional)</span></label>
+            <div class="lora-select-row">
+              <select id="c-lora-select">
+                <option value="">None — zero-shot base model</option>
+              </select>
+              <button type="button" id="c-lora-add-btn" class="btn-icon" title="Register new adapter">+</button>
+            </div>
+            <span class="hint" id="c-lora-hint">Routes to a vLLM fine-tuned adapter</span>
+          </div>
+
+          <!-- Inline adapter registration panel -->
+          <div id="lora-panel" class="lora-panel hidden">
+            <div class="lora-panel-title">
+              <span>Register LoRA Adapter</span>
+              <button type="button" id="lora-panel-close" class="btn-icon-sm">✕</button>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="la-name">Display Name <span class="req">*</span></label>
+                <input type="text" id="la-name" placeholder="Municipal Road Repair v4">
+              </div>
+              <div class="field">
+                <label for="la-adapter-id">Adapter ID <span class="req">*</span></label>
+                <input type="text" id="la-adapter-id" placeholder="muni_road_v4">
+                <span class="hint">Slug used in vLLM <code>--lora-modules</code></span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="la-domain">Domain <span class="req">*</span></label>
+                <input type="text" id="la-domain" placeholder="municipal_infrastructure">
+              </div>
+              <div class="field">
+                <label for="la-category">Category <span class="opt">(optional)</span></label>
+                <input type="text" id="la-category" placeholder="road_repair">
+              </div>
+            </div>
+            <div class="field">
+              <label for="la-base-model">Base Model</label>
+              <input type="text" id="la-base-model" value="Qwen/Qwen2.5-VL-7B-Instruct">
+            </div>
+            <div class="field">
+              <label for="la-path">Adapter Path <span class="opt">(optional)</span></label>
+              <input type="text" id="la-path" placeholder="/mnt/adapters/muni_road_v4">
+              <span class="hint">Local filesystem path to adapter weights</span>
+            </div>
+            <div class="field">
+              <label for="la-notes">Notes <span class="opt">(optional)</span></label>
+              <input type="text" id="la-notes" placeholder="Trained on 500 São Paulo road images, rank 16">
+            </div>
+            <div id="lora-panel-banner" class="banner"></div>
+            <button type="button" class="btn btn-secondary" id="la-save-btn">Save Adapter</button>
           </div>
         </div>
 
@@ -668,7 +809,7 @@ document.getElementById('contract-form').addEventListener('submit', async e => {
     required_state:         v('c-state'),
     negative_indicators:    negIndicators,
     strictness_coefficient: +slider.value,
-    lora_id:                v('c-lora') || null,
+    lora_id:                document.getElementById('c-lora-select').value || null,
   };
 
   try {
@@ -922,7 +1063,124 @@ function colorJson(json) {
   );
 }
 
-// Pre-load contracts so the selector is ready if user switches tabs immediately
+/* ─── LoRA adapters ─── */
+let adaptersCache = [];
+
+async function loadAdapters() {
+  try {
+    const res = await fetch(API + '/adapters');
+    adaptersCache = await res.json();
+  } catch {
+    adaptersCache = [];
+  }
+  populateAdapterSelect();
+}
+
+function populateAdapterSelect() {
+  const sel = document.getElementById('c-lora-select');
+  // Keep only the "none" option then rebuild
+  sel.innerHTML = '<option value="">None — zero-shot base model</option>';
+
+  if (adaptersCache.length === 0) {
+    const hint = document.getElementById('c-lora-hint');
+    hint.innerHTML = 'No adapters registered yet. Click <strong>+</strong> to add one.';
+    hint.style.color = 'var(--warn)';
+  } else {
+    document.getElementById('c-lora-hint').innerHTML = 'Routes inference through a vLLM fine-tuned adapter.';
+    document.getElementById('c-lora-hint').style.color = '';
+
+    // Group by domain
+    const byDomain = {};
+    adaptersCache.forEach(a => {
+      (byDomain[a.domain] = byDomain[a.domain] || []).push(a);
+    });
+
+    Object.entries(byDomain).forEach(([domain, adapters]) => {
+      const group = document.createElement('optgroup');
+      group.label = domain;
+      adapters.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.adapter_id;
+        const statusTag = a.status !== 'active' ? ` [${a.status}]` : '';
+        opt.textContent = `${a.name}${statusTag}  ·  ${a.adapter_id}`;
+        if (a.category) opt.dataset.category = a.category;
+        group.appendChild(opt);
+      });
+      sel.appendChild(group);
+    });
+  }
+}
+
+// Toggle inline register panel
+document.getElementById('c-lora-add-btn').addEventListener('click', () => {
+  const panel = document.getElementById('lora-panel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    document.getElementById('la-name').focus();
+  }
+});
+
+document.getElementById('lora-panel-close').addEventListener('click', () => {
+  document.getElementById('lora-panel').classList.add('hidden');
+});
+
+// Save new adapter
+document.getElementById('la-save-btn').addEventListener('click', async () => {
+  const name      = document.getElementById('la-name').value.trim();
+  const adapterId = document.getElementById('la-adapter-id').value.trim();
+  const domain    = document.getElementById('la-domain').value.trim();
+
+  if (!name || !adapterId || !domain) {
+    banner('lora-panel-banner', false, '✗ Name, Adapter ID and Domain are required.');
+    return;
+  }
+
+  const btn = document.getElementById('la-save-btn');
+  setLoading(btn, true, 'Saving…');
+
+  const body = {
+    name,
+    adapter_id: adapterId,
+    domain,
+    category:     document.getElementById('la-category').value.trim() || null,
+    base_model:   document.getElementById('la-base-model').value.trim(),
+    adapter_path: document.getElementById('la-path').value.trim() || null,
+    notes:        document.getElementById('la-notes').value.trim() || null,
+  };
+
+  try {
+    const res  = await fetch(API + '/adapters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      banner('lora-panel-banner', true, '✓ Adapter registered.');
+      adaptersCache.push(data);
+      populateAdapterSelect();
+      // Auto-select the newly created adapter
+      document.getElementById('c-lora-select').value = data.adapter_id;
+      // Close panel after a beat
+      setTimeout(() => {
+        document.getElementById('lora-panel').classList.add('hidden');
+        banner('lora-panel-banner', null);
+        ['la-name','la-adapter-id','la-domain','la-category','la-path','la-notes']
+          .forEach(id => document.getElementById(id).value = '');
+        document.getElementById('la-base-model').value = 'Qwen/Qwen2.5-VL-7B-Instruct';
+      }, 900);
+    } else {
+      banner('lora-panel-banner', false, '✗ ' + (data.detail || JSON.stringify(data)));
+    }
+  } catch (err) {
+    banner('lora-panel-banner', false, '✗ Network error: ' + err.message);
+  } finally {
+    setLoading(btn, false, 'Save Adapter');
+  }
+});
+
+// Pre-load adapters and contracts so selectors are ready immediately
+loadAdapters();
 loadContracts();
 </script>
 </body>

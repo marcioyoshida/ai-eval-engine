@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import ContractDefinition, EvaluationRecord, FlaggedQueue
+from db.models import ContractDefinition, EvaluationRecord, FlaggedQueue, LoraAdapter
 
 
 async def create_contract(session: AsyncSession, data: dict) -> ContractDefinition:
@@ -10,6 +10,28 @@ async def create_contract(session: AsyncSession, data: dict) -> ContractDefiniti
     await session.commit()
     await session.refresh(contract)
     return contract
+
+
+async def get_all_adapters(session: AsyncSession) -> list[LoraAdapter]:
+    result = await session.execute(
+        select(LoraAdapter).order_by(LoraAdapter.domain, LoraAdapter.name)
+    )
+    return list(result.scalars().all())
+
+
+async def get_adapter_by_id(session: AsyncSession, adapter_id: str) -> LoraAdapter | None:
+    result = await session.execute(
+        select(LoraAdapter).where(LoraAdapter.adapter_id == adapter_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_adapter(session: AsyncSession, data: dict) -> LoraAdapter:
+    adapter = LoraAdapter(**data)
+    session.add(adapter)
+    await session.commit()
+    await session.refresh(adapter)
+    return adapter
 
 
 async def get_all_contracts(session: AsyncSession) -> list[ContractDefinition]:

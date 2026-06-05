@@ -44,6 +44,24 @@ class EvaluationRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class LoraAdapter(Base):
+    __tablename__ = "lora_adapters"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    # Human-readable display name
+    name: Mapped[str] = mapped_column(String(256))
+    # Slug used as the vLLM model name and stored in ContractDefinition.lora_id
+    adapter_id: Mapped[str] = mapped_column(String(256), unique=True, index=True)
+    domain: Mapped[str] = mapped_column(String(128), index=True)
+    category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    base_model: Mapped[str] = mapped_column(String(256), default="Qwen/Qwen2.5-VL-7B-Instruct")
+    adapter_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # active | training | deprecated
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class FlaggedQueue(Base):
     __tablename__ = "flagged_queue"
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from api.routes import contracts, evaluation
+from api.routes import adapters, contracts, evaluation
 from db.session import init_db
 
 _UI_PATH = Path(__file__).parent / "static" / "index.html"
@@ -23,6 +23,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(adapters.router,  prefix="/adapters",  tags=["adapters"])
 app.include_router(contracts.router, prefix="/contracts", tags=["contracts"])
 app.include_router(evaluation.router, prefix="/evaluate", tags=["evaluation"])
 
