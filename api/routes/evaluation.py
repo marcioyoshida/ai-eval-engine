@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
-from core.schemas import ContractParams, EvaluationResult
+from core.schemas import ContractParams, EvaluationResult, EvaluationThinking
 from db.crud import flag_for_review, get_contract_by_id, save_evaluation
 from db.session import get_session
 
@@ -46,6 +46,7 @@ class EvaluationResponse(BaseModel):
     passed: bool
     confidence: float
     rationale: str
+    thinking: EvaluationThinking | None = None
     threshold_applied: float
     routed_to_human: bool
 
@@ -124,6 +125,7 @@ async def evaluate(
         passed=result.passed,
         confidence=result.confidence,
         rationale=result.rationale,
+        thinking=result.thinking,
         threshold_applied=result.threshold_applied,
         routed_to_human=result.routed_to_human,
     )

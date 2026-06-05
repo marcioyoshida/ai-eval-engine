@@ -13,7 +13,7 @@ import openai
 
 from core.config import settings
 from core.inference import _build_system_prompt, _parse_result
-from core.schemas import ContractParams, EvaluationResult
+from core.schemas import ContractParams, EvaluationResult, EvaluationThinking
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +71,14 @@ class VLLMOrchestrator:
             response = await self._client.chat.completions.create(
                 model=model,
                 messages=messages,
-                max_tokens=256,
+                max_tokens=1024,
                 temperature=0.0,  # deterministic for contract evaluation
+                # enable_thinking surfaces native <think> tokens on reasoning models
+                # (QwQ, Qwen3-thinking); _parse_result strips them before JSON parsing
+                extra_body={"chat_template_kwargs": {"enable_thinking": True}},
             )
             raw = response.choices[0].message.content or ""
-            logger.debug("vLLM raw response [model=%s]: %s", model, raw[:300])
+            logger.debug("vLLM raw response [model=%s]: %s", model, raw[:500])
             return _parse_result(raw)
         except openai.APIConnectionError as exc:
             logger.error("vLLM server unreachable at %s: %s", self._base_url, exc)
@@ -135,8 +138,26 @@ class VLLMOrchestrator:
             f"Primary rationale: {juror1.rationale}"
         )
 
+        # Merge thinking blocks from all three jurors into a single composite trace
+        merged_thinking: EvaluationThinking | None = None
+        if any(j.thinking for j in (juror1, juror2, juror3)):
+            def _safe(j, field):
+                return getattr(j.thinking, field, []) if j.thinking else []
+
+            merged_thinking = EvaluationThinking(
+                observations=_safe(juror1, "observations"),
+                positive_evidence=_safe(juror1, "positive_evidence"),
+                negative_evidence=_safe(juror2, "positive_evidence"),  # adversarial PASS = failure evidence
+                reasoning=(
+                    f"[Specialist] {getattr(juror1.thinking, 'reasoning', '') if juror1.thinking else juror1.rationale} | "
+                    f"[Adversarial] {getattr(juror2.thinking, 'reasoning', '') if juror2.thinking else juror2.rationale} | "
+                    f"[Base] {getattr(juror3.thinking, 'reasoning', '') if juror3.thinking else juror3.rationale}"
+                ),
+            )
+
         return EvaluationResult(
             passed=passed,
             confidence=round(consensus_score, 4),
             rationale=rationale,
+            thinking=merged_thinking,
         )

@@ -6,19 +6,38 @@ import json
 import logging
 from pathlib import Path
 
-from core.schemas import ContractParams, EvaluationResult
+from core.schemas import ContractParams, EvaluationResult, EvaluationThinking
 
 logger = logging.getLogger(__name__)
 
-_SYSTEM_TEMPLATE = (
-    "You are a strict, deterministic visual contract arbitrator. "
-    "Your task is to inspect the provided image and verify whether the target object "
-    "'{target_object}' satisfies the expected condition: '{required_state}'. "
-    "Also scan explicitly for these failure indicators: {negative_indicators}. "
-    "Reply ONLY with a valid JSON object containing exactly three keys: "
-    '"passed" (boolean), "confidence" (float 0.0-1.0), "rationale" (string). '
-    "No markdown, no explanation outside the JSON."
-)
+_SYSTEM_TEMPLATE = """\
+You are a strict, deterministic visual contract arbitrator.
+
+CONTRACT
+  Target object  : {target_object}
+  Required state : {required_state}
+  Failure signals: {negative_indicators}
+
+INSTRUCTIONS
+Examine the image carefully and produce a single JSON object with this exact structure:
+
+{{
+  "thinking": {{
+    "observations":      [ "<neutral factual observations about the image>" ],
+    "positive_evidence": [ "<specific visual details supporting PASS>" ],
+    "negative_evidence": [ "<specific visual details supporting FAIL>" ],
+    "reasoning": "<step-by-step chain of thought weighing the evidence above>"
+  }},
+  "passed":     <true | false>,
+  "confidence": <float 0.0–1.0>,
+  "rationale":  "<one concise sentence summarising the final verdict>"
+}}
+
+Rules:
+- Output ONLY the raw JSON — no markdown fences, no prose before or after.
+- Every array must have at least one element; write "none observed" if genuinely empty.
+- Confidence must reflect genuine uncertainty: do not round to 0.0 or 1.0 unless certain.\
+"""
 
 
 def _build_system_prompt(params: ContractParams) -> str:
@@ -81,7 +100,7 @@ class VisualContractOracle:
             return_tensors="pt",
         ).to("cuda")
 
-        generated_ids = self.model.generate(**inputs, max_new_tokens=256)
+        generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
         raw = self.processor.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
@@ -91,6 +110,10 @@ class VisualContractOracle:
 
 def _parse_result(raw: str) -> EvaluationResult:
     """Extract the JSON payload from model output, tolerating surrounding text."""
+    # Strip native <think>…</think> tokens emitted by reasoning models (QwQ, Qwen3-thinking)
+    import re
+    raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+
     start = raw.find("{")
     end = raw.rfind("}") + 1
     if start == -1 or end == 0:
@@ -102,10 +125,20 @@ def _parse_result(raw: str) -> EvaluationResult:
         )
     try:
         data = json.loads(raw[start:end])
+        thinking: EvaluationThinking | None = None
+        if "thinking" in data and isinstance(data["thinking"], dict):
+            t = data["thinking"]
+            thinking = EvaluationThinking(
+                observations=_coerce_list(t.get("observations")),
+                positive_evidence=_coerce_list(t.get("positive_evidence")),
+                negative_evidence=_coerce_list(t.get("negative_evidence")),
+                reasoning=str(t.get("reasoning", "")),
+            )
         return EvaluationResult(
             passed=bool(data["passed"]),
             confidence=float(data["confidence"]),
             rationale=str(data["rationale"]),
+            thinking=thinking,
         )
     except (json.JSONDecodeError, KeyError, ValueError) as exc:
         logger.warning("Failed to parse model JSON: %s — raw: %r", exc, raw[:200])
@@ -114,3 +147,11 @@ def _parse_result(raw: str) -> EvaluationResult:
             confidence=0.0,
             rationale=f"Parse failure ({exc}): {raw[:300]}",
         )
+
+
+def _coerce_list(value) -> list[str]:
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    if isinstance(value, str):
+        return [value]
+    return ["none observed"]
