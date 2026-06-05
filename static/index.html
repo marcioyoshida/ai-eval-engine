@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Evaluation Engine</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface-alt: #21262d;
+      --border: #30363d;
+      --primary: #58a6ff;
+      --primary-glow: rgba(88,166,255,0.1);
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --pass: #3fb950;
+      --pass-bg: rgba(63,185,80,0.1);
+      --pass-border: rgba(63,185,80,0.3);
+      --fail: #f85149;
+      --fail-bg: rgba(248,81,73,0.1);
+      --fail-border: rgba(248,81,73,0.3);
+      --warn: #d29922;
+      --purple: #a371f7;
+      --r: 6px;
+      --r-lg: 10px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 54px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .logo-mark {
+      width: 26px;
+      height: 26px;
+      background: linear-gradient(135deg, var(--primary), #a371f7);
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+    }
+
+    .pill {
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 2px 8px;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 28px 24px; }
+
+    /* ── Tabs ── */
+    .tabs-nav {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+      gap: 2px;
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      color: var(--muted);
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: color 0.15s;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Page heading ── */
+    .page-head { margin-bottom: 22px; }
+    .page-head h2 { font-size: 18px; font-weight: 600; margin-bottom: 3px; }
+    .page-head p { color: var(--muted); font-size: 13px; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Form elements ── */
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .row.single { grid-template-columns: 1fr; }
+
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+
+    label { font-size: 12px; font-weight: 500; color: var(--muted); }
+    label .req { color: var(--fail); }
+    label .opt { color: var(--muted); font-weight: 400; }
+
+    input[type=text], textarea, select {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 8px 10px;
+      outline: none;
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+    select option { background: var(--surface-alt); }
+
+    .hint { font-size: 11px; color: var(--muted); }
+
+    /* Slider */
+    .slider-row { display: flex; align-items: center; gap: 10px; }
+    .slider-row input[type=range] {
+      flex: 1;
+      accent-color: var(--primary);
+      cursor: pointer;
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      height: auto;
+    }
+    .slider-row input[type=range]:focus { box-shadow: none; }
+    .slider-num { font-size: 13px; font-weight: 600; color: var(--primary); min-width: 34px; text-align: right; }
+
+    /* ── Button ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: var(--r);
+      border: 1px solid transparent;
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #0d1117;
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover:not(:disabled) { background: #79b8ff; }
+
+    .btn-primary:disabled { opacity: 0.4; cursor: default; }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(13,17,23,0.35);
+      border-top-color: #0d1117;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── File drop ── */
+    .drop-zone {
+      position: relative;
+      border: 2px dashed var(--border);
+      border-radius: var(--r-lg);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--surface-alt);
+    }
+
+    .drop-zone:hover, .drop-zone.over {
+      border-color: var(--primary);
+      background: var(--primary-glow);
+    }
+
+    .drop-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .drop-icon { font-size: 28px; margin-bottom: 8px; }
+    .drop-hint { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .drop-hint strong { color: var(--primary); }
+
+    .file-chosen {
+      display: none;
+      margin-top: 10px;
+      padding: 6px 12px;
+      background: var(--pass-bg);
+      border: 1px solid var(--pass-border);
+      border-radius: var(--r);
+      font-size: 12px;
+      color: var(--pass);
+      align-items: center;
+      gap: 6px;
+    }
+    .file-chosen.show { display: flex; }
+
+    /* OR divider */
+    .or-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 10px 0;
+    }
+    .or-row::before, .or-row::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── Contract chip panel ── */
+    .meta-chips {
+      display: none;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .meta-chips.show { display: flex; }
+
+    .chip { display: flex; flex-direction: column; gap: 2px; }
+    .chip-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .chip-val { font-size: 12px; font-weight: 500; }
+
+    /* ── Two-column evaluate layout ── */
+    .eval-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 700px) { .eval-grid { grid-template-columns: 1fr; } }
+
+    .sticky-col { position: sticky; top: 78px; }
+
+    /* ── Banners ── */
+    .banner {
+      padding: 10px 14px;
+      border-radius: var(--r);
+      font-size: 13px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .banner.show { display: block; }
+    .banner.ok { background: var(--pass-bg); border: 1px solid var(--pass-border); color: var(--pass); }
+    .banner.err { background: var(--fail-bg); border: 1px solid var(--fail-border); color: var(--fail); }
+
+    /* ── Empty result state ── */
+    .empty-state {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--r-lg);
+      padding: 52px 24px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-state .empty-icon { font-size: 34px; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Result card ── */
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+
+    /* Verdict bar */
+    .verdict-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .verdict-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      padding: 5px 13px;
+      border-radius: 99px;
+    }
+    .verdict-pill.pass { background: var(--pass-bg); border: 1px solid var(--pass-border); color: var(--pass); }
+    .verdict-pill.fail { background: var(--fail-bg); border: 1px solid var(--fail-border); color: var(--fail); }
+
+    .conf-group { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .conf-label { font-size: 11px; color: var(--muted); }
+    .conf-row { display: flex; align-items: center; gap: 8px; }
+    .conf-track { width: 96px; height: 5px; background: var(--surface-alt); border-radius: 99px; overflow: hidden; }
+    .conf-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+    .conf-pct { font-size: 13px; font-weight: 600; }
+
+    /* Body */
+    .result-body { padding: 16px 18px; }
+
+    .rationale {
+      font-size: 13px;
+      line-height: 1.65;
+      padding: 10px 14px;
+      border-left: 3px solid var(--primary);
+      background: var(--primary-glow);
+      border-radius: 0 var(--r) var(--r) 0;
+      margin-bottom: 14px;
+    }
+
+    /* Thinking toggle */
+    .think-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 7px 0;
+      width: 100%;
+      text-align: left;
+    }
+    .think-toggle:hover { color: var(--text); }
+
+    .think-arrow { transition: transform 0.2s; display: inline-block; }
+    .think-toggle.open .think-arrow { transform: rotate(90deg); }
+
+    .think-body { display: none; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .think-body.open { display: flex; }
+
+    .t-block { border-radius: var(--r); padding: 10px 12px; }
+    .t-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; }
+
+    .t-block ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+    .t-block li {
+      font-size: 12px;
+      line-height: 1.55;
+      padding-left: 12px;
+      position: relative;
+      color: var(--text);
+    }
+    .t-block li::before { content: '›'; position: absolute; left: 0; opacity: 0.5; }
+    .t-block p { font-size: 12px; line-height: 1.65; color: var(--text); }
+
+    .t-obs     { background: rgba(88,166,255,0.06);  border: 1px solid rgba(88,166,255,0.2);  }
+    .t-obs     .t-title { color: #58a6ff; }
+    .t-pos     { background: rgba(63,185,80,0.06);   border: 1px solid rgba(63,185,80,0.2);   }
+    .t-pos     .t-title { color: var(--pass); }
+    .t-neg     { background: rgba(248,81,73,0.06);   border: 1px solid rgba(248,81,73,0.2);   }
+    .t-neg     .t-title { color: var(--fail); }
+    .t-reason  { background: rgba(163,113,247,0.06); border: 1px solid rgba(163,113,247,0.2); }
+    .t-reason  .t-title { color: var(--purple); }
+
+    /* Footer meta */
+    .result-footer {
+      padding: 10px 18px;
+      background: var(--surface-alt);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .meta { display: flex; flex-direction: column; gap: 1px; }
+    .meta-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .meta-val { font-size: 12px; font-weight: 500; font-family: ui-monospace, 'SF Mono', monospace; }
+    .meta-val.human-yes { color: var(--warn); }
+    .meta-val.human-no  { color: var(--pass); }
+
+    /* JSON display for contract result */
+    .json-block {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      font-family: ui-monospace, 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">⬡</div>
+    AI Evaluation Engine
+  </div>
+  <span class="pill">pilot v0.1</span>
+</header>
+
+<div class="container">
+  <nav class="tabs-nav">
+    <button class="tab-btn active" data-tab="contracts">📋 Register Contract</button>
+    <button class="tab-btn" data-tab="evaluate">🔍 Evaluate Image</button>
+  </nav>
+
+  <!-- ═══════════════ CONTRACTS TAB ═══════════════ -->
+  <section id="tab-contracts" class="tab-panel active">
+    <div class="page-head">
+      <h2>Register Contract</h2>
+      <p>Define a new visual assertion contract for a domain and target object.</p>
+    </div>
+
+    <div id="c-banner" class="banner"></div>
+
+    <div class="card">
+      <div class="card-label">Contract Definition</div>
+      <form id="contract-form" autocomplete="off">
+
+        <div class="row">
+          <div class="field">
+            <label for="c-domain">Domain <span class="req">*</span></label>
+            <input type="text" id="c-domain" placeholder="municipal_infrastructure" required>
+          </div>
+          <div class="field">
+            <label for="c-name">Contract Name <span class="req">*</span></label>
+            <input type="text" id="c-name" placeholder="Pothole Repair Check" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="c-target">Target Object <span class="req">*</span></label>
+          <input type="text" id="c-target" placeholder="e.g. pothole, car bumper, kitchen countertop" required>
+        </div>
+
+        <div class="field">
+          <label for="c-state">Required State <span class="req">*</span></label>
+          <textarea id="c-state" placeholder="e.g. fully filled with dark asphalt, level with the surrounding road surface" required></textarea>
+        </div>
+
+        <div class="field">
+          <label for="c-negative">Failure Signals <span class="opt">(optional)</span></label>
+          <textarea id="c-negative" placeholder="loose gravel&#10;exposed base layer&#10;water pooling"></textarea>
+          <span class="hint">One per line or comma-separated</span>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Strictness Coefficient</label>
+            <div class="slider-row">
+              <input type="range" id="c-strictness" min="0" max="1" step="0.01" value="0.80">
+              <span class="slider-num" id="c-strictness-val">0.80</span>
+            </div>
+            <span class="hint">Minimum confidence to auto-pass (0.0 – 1.0)</span>
+          </div>
+          <div class="field">
+            <label for="c-lora">LoRA Adapter ID <span class="opt">(optional)</span></label>
+            <input type="text" id="c-lora" placeholder="e.g. muni_road_v4">
+            <span class="hint">Routes to a vLLM fine-tuned adapter</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="c-submit-btn">
+          Register Contract
+        </button>
+      </form>
+    </div>
+
+    <div id="contract-result" class="hidden">
+      <div class="card">
+        <div class="card-label">Created Contract</div>
+        <div id="contract-result-body"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ EVALUATE TAB ═══════════════ -->
+  <section id="tab-evaluate" class="tab-panel">
+    <div class="page-head">
+      <h2>Evaluate Image</h2>
+      <p>Submit visual evidence against a registered contract and inspect the model's reasoning.</p>
+    </div>
+
+    <div class="eval-grid">
+
+      <!-- Left: form -->
+      <div>
+        <div class="card">
+          <div class="card-label">Contract</div>
+
+          <div class="field">
+            <label for="e-select">Select Contract <span class="req">*</span></label>
+            <select id="e-select">
+              <option value="">Loading contracts…</option>
+            </select>
+          </div>
+
+          <div id="e-chips" class="meta-chips">
+            <div class="chip">
+              <span class="chip-label">Name</span>
+              <span class="chip-val" id="chip-name">—</span>
+            </div>
+            <div class="chip">
+              <span class="chip-label">Domain</span>
+              <span class="chip-val" id="chip-domain">—</span>
+            </div>
+            <div class="chip">
+              <span class="chip-label">Target Object</span>
+              <span class="chip-val" id="chip-target">—</span>
+            </div>
+            <div class="chip">
+              <span class="chip-label">Strictness</span>
+              <span class="chip-val" id="chip-strictness">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Image Source</div>
+
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" id="e-file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <div class="drop-icon">📷</div>
+            <div class="drop-hint">
+              <strong>Click to browse</strong> or drag &amp; drop<br>
+              PNG · JPG · WEBP · GIF
+            </div>
+            <div class="file-chosen" id="file-chosen">
+              <span>✓</span>
+              <span id="file-chosen-name"></span>
+            </div>
+          </div>
+
+          <div class="or-row">or</div>
+
+          <div class="field" style="margin-bottom:0">
+            <label for="e-url">Image URL</label>
+            <input type="text" id="e-url" placeholder="https://example.com/image.jpg">
+          </div>
+        </div>
+
+        <div id="e-banner" class="banner"></div>
+
+        <button class="btn btn-primary" id="e-submit-btn" disabled>
+          Run Evaluation
+        </button>
+      </div>
+
+      <!-- Right: result -->
+      <div class="sticky-col">
+        <div id="e-empty" class="empty-state">
+          <div class="empty-icon">🔬</div>
+          <p>Submit an image to see<br>the evaluation result</p>
+        </div>
+        <div id="e-result" class="hidden"></div>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<script>
+const API = '';
+let contracts = [];
+
+/* ─── Tabs ─── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'evaluate') loadContracts();
+  });
+});
+
+/* ─── Slider ─── */
+const slider = document.getElementById('c-strictness');
+const sliderNum = document.getElementById('c-strictness-val');
+slider.addEventListener('input', () => sliderNum.textContent = (+slider.value).toFixed(2));
+
+/* ─── Contracts form ─── */
+document.getElementById('contract-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('c-submit-btn');
+  setLoading(btn, true, 'Registering…');
+
+  const negRaw = document.getElementById('c-negative').value;
+  const negIndicators = negRaw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+
+  const body = {
+    domain:                 v('c-domain'),
+    name:                   v('c-name'),
+    target_object:          v('c-target'),
+    required_state:         v('c-state'),
+    negative_indicators:    negIndicators,
+    strictness_coefficient: +slider.value,
+    lora_id:                v('c-lora') || null,
+  };
+
+  try {
+    const res = await fetch(API + '/contracts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      banner('c-banner', true, '✓ Contract registered successfully.');
+      const el = document.getElementById('contract-result');
+      el.classList.remove('hidden');
+      document.getElementById('contract-result-body').innerHTML =
+        '<div class="json-block">' + colorJson(JSON.stringify(data, null, 2)) + '</div>';
+    } else {
+      banner('c-banner', false, '✗ ' + (data.detail || JSON.stringify(data)));
+    }
+  } catch (err) {
+    banner('c-banner', false, '✗ Network error: ' + err.message);
+  } finally {
+    setLoading(btn, false, 'Register Contract');
+  }
+});
+
+/* ─── Load contracts for selector ─── */
+async function loadContracts() {
+  const sel = document.getElementById('e-select');
+  try {
+    const res = await fetch(API + '/contracts');
+    contracts = await res.json();
+    sel.innerHTML = '<option value="">— Select a contract —</option>';
+    contracts.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = `${c.name}  ·  ${c.target_object}  [${c.domain}]`;
+      sel.appendChild(o);
+    });
+  } catch {
+    sel.innerHTML = '<option value="">Could not load contracts</option>';
+  }
+}
+
+document.getElementById('e-select').addEventListener('change', function () {
+  const c = contracts.find(x => x.id === this.value);
+  const chips = document.getElementById('e-chips');
+  if (c) {
+    document.getElementById('chip-name').textContent       = c.name;
+    document.getElementById('chip-domain').textContent     = c.domain;
+    document.getElementById('chip-target').textContent     = c.target_object;
+    document.getElementById('chip-strictness').textContent = c.strictness_coefficient;
+    chips.classList.add('show');
+  } else {
+    chips.classList.remove('show');
+  }
+  syncSubmitBtn();
+});
+
+/* ─── File drop zone ─── */
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('e-file');
+const fileChosen = document.getElementById('file-chosen');
+
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  if (f) {
+    document.getElementById('file-chosen-name').textContent = f.name;
+    fileChosen.classList.add('show');
+    document.getElementById('e-url').value = '';
+  }
+  syncSubmitBtn();
+});
+
+['dragover', 'dragenter'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault();
+  dropZone.classList.add('over');
+}));
+['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => {
+  e.preventDefault();
+  dropZone.classList.remove('over');
+  if (ev === 'drop' && e.dataTransfer.files[0]) {
+    fileInput.files = e.dataTransfer.files;
+    fileInput.dispatchEvent(new Event('change'));
+  }
+}));
+
+document.getElementById('e-url').addEventListener('input', () => {
+  if (document.getElementById('e-url').value.trim()) {
+    fileInput.value = '';
+    fileChosen.classList.remove('show');
+  }
+  syncSubmitBtn();
+});
+
+function syncSubmitBtn() {
+  const hasContract = !!document.getElementById('e-select').value;
+  const hasImage    = !!(fileInput.files && fileInput.files[0]) ||
+                      !!document.getElementById('e-url').value.trim();
+  document.getElementById('e-submit-btn').disabled = !(hasContract && hasImage);
+}
+
+/* ─── Evaluate submit ─── */
+document.getElementById('e-submit-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('e-submit-btn');
+  setLoading(btn, true, 'Evaluating…');
+  banner('e-banner', null);
+
+  const fd = new FormData();
+  fd.append('contract_id', document.getElementById('e-select').value);
+  const file = fileInput.files && fileInput.files[0];
+  const url  = document.getElementById('e-url').value.trim();
+  if (file) fd.append('file', file);
+  else      fd.append('image_url', url);
+
+  try {
+    const res  = await fetch(API + '/evaluate', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      renderResult(data);
+    } else {
+      banner('e-banner', false, '✗ ' + (data.detail || JSON.stringify(data)));
+    }
+  } catch (err) {
+    banner('e-banner', false, '✗ Network error: ' + err.message);
+  } finally {
+    setLoading(btn, false, 'Run Evaluation');
+    syncSubmitBtn();
+  }
+});
+
+/* ─── Render evaluation result ─── */
+function renderResult(d) {
+  document.getElementById('e-empty').classList.add('hidden');
+  const el = document.getElementById('e-result');
+  el.classList.remove('hidden');
+
+  const pass     = d.passed;
+  const confPct  = Math.round(d.confidence * 100);
+  const confColor = d.confidence >= 0.75 ? 'var(--pass)' :
+                    d.confidence >= 0.45 ? 'var(--warn)' : 'var(--fail)';
+
+  let thinkHtml = '';
+  if (d.thinking) {
+    const t = d.thinking;
+    thinkHtml = `
+      <button class="think-toggle" onclick="toggleThink(this)">
+        <span class="think-arrow">›</span>
+        Model Thinking
+      </button>
+      <div class="think-body">
+        <div class="t-block t-obs">
+          <div class="t-title">Observations</div>
+          <ul>${t.observations.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+        </div>
+        <div class="t-block t-pos">
+          <div class="t-title">Positive Evidence</div>
+          <ul>${t.positive_evidence.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+        </div>
+        <div class="t-block t-neg">
+          <div class="t-title">Negative Evidence</div>
+          <ul>${t.negative_evidence.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+        </div>
+        <div class="t-block t-reason">
+          <div class="t-title">Reasoning</div>
+          <p>${esc(t.reasoning)}</p>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <div class="result-card">
+      <div class="verdict-bar">
+        <div class="verdict-pill ${pass ? 'pass' : 'fail'}">
+          ${pass ? '✓ PASS' : '✗ FAIL'}
+        </div>
+        <div class="conf-group">
+          <span class="conf-label">Confidence</span>
+          <div class="conf-row">
+            <div class="conf-track">
+              <div class="conf-fill" style="width:${confPct}%;background:${confColor}"></div>
+            </div>
+            <span class="conf-pct" style="color:${confColor}">${confPct}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-body">
+        <div class="rationale">${esc(d.rationale)}</div>
+        ${thinkHtml}
+      </div>
+
+      <div class="result-footer">
+        <div class="meta">
+          <span class="meta-lbl">Evaluation ID</span>
+          <span class="meta-val">${d.evaluation_id.slice(0, 8)}…</span>
+        </div>
+        <div class="meta">
+          <span class="meta-lbl">Threshold</span>
+          <span class="meta-val">${d.threshold_applied}</span>
+        </div>
+        <div class="meta">
+          <span class="meta-lbl">Human Review</span>
+          <span class="meta-val ${d.routed_to_human ? 'human-yes' : 'human-no'}">
+            ${d.routed_to_human ? '⚑ Queued' : '✓ Auto-resolved'}
+          </span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleThink(btn) {
+  btn.classList.toggle('open');
+  btn.nextElementSibling.classList.toggle('open');
+}
+
+/* ─── Helpers ─── */
+function v(id) { return document.getElementById(id).value.trim(); }
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function banner(id, ok, msg) {
+  const el = document.getElementById(id);
+  if (ok === null || ok === undefined) { el.classList.remove('show'); return; }
+  el.className = 'banner show ' + (ok ? 'ok' : 'err');
+  el.textContent = msg;
+}
+
+function setLoading(btn, loading, label) {
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>' + label;
+  } else {
+    btn.innerHTML = label;
+  }
+}
+
+function colorJson(json) {
+  return json.replace(
+    /("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    m => {
+      if (/^"/.test(m) && /:$/.test(m)) return `<span style="color:#79c0ff">${m}</span>`;
+      if (/^"/.test(m))                  return `<span style="color:#a5d6ff">${m}</span>`;
+      if (/true/.test(m))                return `<span style="color:#56d364">${m}</span>`;
+      if (/false/.test(m))               return `<span style="color:#f85149">${m}</span>`;
+      if (/null/.test(m))                return `<span style="color:#8b949e">${m}</span>`;
+      return `<span style="color:#f2cc60">${m}</span>`;
+    }
+  );
+}
+
+// Pre-load contracts so the selector is ready if user switches tabs immediately
+loadContracts();
+</script>
+</body>
+</html>

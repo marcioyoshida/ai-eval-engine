@@ -1,9 +1,13 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from api.routes import contracts, evaluation
 from db.session import init_db
+
+_UI_PATH = Path(__file__).parent / "static" / "index.html"
 
 
 @asynccontextmanager
@@ -21,6 +25,11 @@ app = FastAPI(
 
 app.include_router(contracts.router, prefix="/contracts", tags=["contracts"])
 app.include_router(evaluation.router, prefix="/evaluate", tags=["evaluation"])
+
+
+@app.get("/", include_in_schema=False)
+async def ui():
+    return FileResponse(_UI_PATH)
 
 
 @app.get("/health")

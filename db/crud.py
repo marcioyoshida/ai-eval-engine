@@ -12,6 +12,15 @@ async def create_contract(session: AsyncSession, data: dict) -> ContractDefiniti
     return contract
 
 
+async def get_all_contracts(session: AsyncSession) -> list[ContractDefinition]:
+    result = await session.execute(
+        select(ContractDefinition)
+        .where(ContractDefinition.active == True)  # noqa: E712
+        .order_by(ContractDefinition.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
 async def get_contracts_by_domain(session: AsyncSession, domain: str) -> list[ContractDefinition]:
     result = await session.execute(
         select(ContractDefinition).where(

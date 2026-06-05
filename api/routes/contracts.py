@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.crud import create_contract, get_contracts_by_domain
+from db.crud import create_contract, get_all_contracts, get_contracts_by_domain
 from db.session import get_session
 
 router = APIRouter()
@@ -37,6 +37,11 @@ async def register_contract(
 ):
     contract = await create_contract(session, body.model_dump())
     return contract
+
+
+@router.get("", response_model=list[ContractResponse])
+async def list_all_contracts(session: AsyncSession = Depends(get_session)):
+    return await get_all_contracts(session)
 
 
 @router.get("/{domain}", response_model=list[ContractResponse])
