@@ -1,4 +1,4 @@
-"""Local HuggingFace inference backend (Phase 1 — single GPU sandbox)."""
+"""Local HuggingFace inference backend — supports MPS (Apple Silicon), CUDA, and CPU."""
 
 from __future__ import annotations
 
@@ -9,6 +9,25 @@ from pathlib import Path
 from core.schemas import ContractParams, EvaluationResult, EvaluationThinking
 
 logger = logging.getLogger(__name__)
+
+
+def _detect_device(override: str = "auto") -> str:
+    """Return the best available compute device.
+
+    Priority: MPS (Apple Silicon) → CUDA → CPU.
+    Set DEVICE=mps|cuda|cpu in .env to force a specific backend.
+    """
+    if override != "auto":
+        return override
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            return "mps"
+        if torch.cuda.is_available():
+            return "cuda"
+    except ImportError:
+        pass
+    return "cpu"
 
 _SYSTEM_TEMPLATE = """\
 You are a strict, deterministic visual contract arbitrator.
@@ -49,27 +68,35 @@ def _build_system_prompt(params: ContractParams) -> str:
 
 
 class VisualContractOracle:
-    """Wraps Qwen2.5-VL for local single-GPU evaluation."""
+    """Wraps Qwen2.5-VL for local inference — MPS, CUDA, or CPU."""
 
     def __init__(self, model_id: str = "Qwen/Qwen2.5-VL-7B-Instruct"):
-        # Lazy import so the module loads even without GPU/torch installed
         try:
+            import torch
             from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
             from qwen_vl_utils import process_vision_info  # noqa: F401
         except ImportError as e:
             raise RuntimeError(
-                "Local GPU backend requires the 'local-gpu' extras: "
-                "poetry install --extras local-gpu"
+                "Local inference requires the 'local-mps' extras: "
+                "poetry install --extras local-mps"
             ) from e
 
-        import torch
+        from core.config import settings
 
+        self._device = _detect_device(settings.device)
         self._process_vision_info = process_vision_info
+
+        # MPS doesn't support bfloat16; float16 works on both MPS and CUDA.
+        # CPU falls back to float32 to avoid precision loss without a native fp16 unit.
+        dtype = torch.float32 if self._device == "cpu" else torch.float16
+
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-            model_id, torch_dtype="auto", device_map="auto"
+            model_id,
+            torch_dtype=dtype,
+            device_map={"": self._device},
         )
         self.processor = AutoProcessor.from_pretrained(model_id)
-        logger.info("VisualContractOracle loaded model %s", model_id)
+        logger.info("VisualContractOracle loaded model %s on device=%s", model_id, self._device)
 
     def evaluate_evidence(
         self, image_source: str | Path, params: ContractParams
@@ -98,7 +125,7 @@ class VisualContractOracle:
             videos=video_inputs,
             padding=True,
             return_tensors="pt",
-        ).to("cuda")
+        ).to(self._device)
 
         generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
         # Slice off the input tokens — generate() returns the full sequence by default

@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     # Local model config (used when inference_backend=local)
     local_model_id: str = "Qwen/Qwen2.5-VL-7B-Instruct"
 
+    # Compute device: "auto" probes MPS → CUDA → CPU in that order.
+    # Override with "mps", "cuda", or "cpu" to force a specific backend.
+    device: str = "auto"
+
     # Confidence band that routes to human review queue
     human_review_lower: float = 0.45
     human_review_upper: float = 0.65

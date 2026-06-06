@@ -15,13 +15,8 @@ services:
       - ../adapters:/app/adapters
     depends_on:
       - redis
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # No GPU reservation — MPS is host-only on macOS; container runs on CPU.
+    # For native MPS inference run: poetry run uvicorn main:app --reload
 
   worker:
     build:
@@ -54,13 +49,8 @@ services:
       - ../adapters:/adapters
     profiles:
       - production
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # vLLM has no macOS build — use the native vllm serve command on a Linux box
+    # or point VLLM_BASE_URL at a remote vLLM server from your Mac.
 
   redis:
     image: redis:7-alpine
