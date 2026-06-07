@@ -100,16 +100,54 @@ def _fallback() -> dict:
     }
 
 
+async def _generate_sf_image(
+    sf_description: str,
+    delta_id: str,
+    images_dir: Path,
+) -> str | None:
+    """Generate synthetic SF image from sf_description via local Flux.1.
+
+    Returns the filename (relative to images_dir) or None on failure.
+    """
+    import asyncio
+
+    try:
+        from core.image_gen import _get_generator
+        from core.config import settings
+
+        gen = _get_generator()
+        filename = f"sf_{delta_id}.png"
+        output_path = images_dir / filename
+
+        loop = asyncio.get_event_loop()
+        image = await loop.run_in_executor(
+            None,
+            lambda: gen.generate(
+                prompt=sf_description,
+                width=settings.flux_image_width,
+                height=settings.flux_image_height,
+            ),
+        )
+        image.save(output_path)
+        logger.info("SF image saved to %s", output_path)
+        return filename
+    except Exception as exc:
+        logger.error("SF image generation failed: %s", exc, exc_info=True)
+        return None
+
+
 async def analyze_s0(
     s0_path: str | Path,
     target_object: str,
     required_state: str,
     negative_indicators: list[str],
+    delta_id: str | None = None,
+    images_dir: Path | None = None,
 ) -> dict:
-    """Run S0 → SF gap analysis using the configured local inference backend.
+    """Run S0 → SF gap analysis using the configured inference backend.
 
-    Returns dict with gap_analysis, sf_description, tasks.
-    SF image generation is stubbed — would call Flux.1/SDXL in production.
+    Returns dict with gap_analysis, sf_description, tasks, and sf_image_ref
+    (filename of the generated SF image, or None if generation is disabled/failed).
     """
     import asyncio
     from core.config import settings
@@ -137,4 +175,13 @@ async def analyze_s0(
         "Delta analysis complete: %d tasks generated for object=%r",
         len(result["tasks"]), target_object,
     )
+
+    result["sf_image_ref"] = None
+    if settings.generate_sf_image and delta_id and result.get("sf_description"):
+        _images_dir = (images_dir or Path("data/images")).resolve()
+        _images_dir.mkdir(parents=True, exist_ok=True)
+        result["sf_image_ref"] = await _generate_sf_image(
+            result["sf_description"], delta_id, _images_dir
+        )
+
     return result

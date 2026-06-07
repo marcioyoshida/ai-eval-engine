@@ -30,5 +30,13 @@ class Settings(BaseSettings):
     lora_retrain_threshold: float = 0.95
     lora_retrain_window: int = 100
 
+    # SF image generation via local Flux.1 (requires local-flux extras)
+    generate_sf_image: bool = True
+    flux_model_id: str = "black-forest-labs/FLUX.1-schnell"
+    flux_num_steps: int | None = None       # None = auto (4 for schnell, 20 for dev)
+    flux_guidance_scale: float | None = None  # None = auto (0.0 for schnell, 3.5 for dev)
+    flux_image_width: int = 1024
+    flux_image_height: int = 1024
+
 
 settings = Settings()

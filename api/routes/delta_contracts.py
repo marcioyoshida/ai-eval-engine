@@ -95,6 +95,7 @@ async def create_delta(
         _run_analysis,
         delta_id=delta_id,
         s0_path=str(s0_path),
+        images_dir=_IMAGES_DIR.resolve(),
         target_object=target_object,
         required_state=required_state,
         negative_indicators=indicators,
@@ -149,6 +150,7 @@ async def get_delta(delta_id: str, session: AsyncSession = Depends(get_session))
 async def _run_analysis(
     delta_id: str,
     s0_path: str,
+    images_dir: Path,
     target_object: str,
     required_state: str,
     negative_indicators: list[str],
@@ -158,11 +160,19 @@ async def _run_analysis(
 
     try:
         from core.delta_engine import analyze_s0
-        result = await analyze_s0(s0_path, target_object, required_state, negative_indicators)
+        result = await analyze_s0(
+            s0_path,
+            target_object,
+            required_state,
+            negative_indicators,
+            delta_id=delta_id,
+            images_dir=images_dir,
+        )
         updates = {
             "gap_analysis": result["gap_analysis"],
             "sf_description": result["sf_description"],
             "tasks": result["tasks"],
+            "sf_image_ref": result.get("sf_image_ref"),
             "generation_status": "complete",
         }
     except Exception as exc:
