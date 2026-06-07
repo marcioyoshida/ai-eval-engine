@@ -550,6 +550,65 @@
       letter-spacing: 0.05em;
     }
 
+    /* ── Delta result elements ── */
+    .delta-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .delta-gap {
+      font-size: 13px;
+      line-height: 1.65;
+      padding: 10px 14px;
+      border-left: 3px solid var(--warn);
+      background: rgba(210,153,34,0.08);
+      border-radius: 0 var(--r) var(--r) 0;
+    }
+
+    .delta-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .delta-status.pending { color: var(--warn); }
+    .delta-status.failed  { color: var(--fail); }
+
+    .task-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .task-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+
+    .task-step {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: var(--primary);
+      color: #0d1117;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      margin-top: 1px;
+    }
+
+    .task-body { display: flex; flex-direction: column; gap: 3px; }
+    .task-action { font-size: 13px; font-weight: 600; }
+    .task-detail { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -566,6 +625,7 @@
 <div class="container">
   <nav class="tabs-nav">
     <button class="tab-btn active" data-tab="contracts">📋 Register Contract</button>
+    <button class="tab-btn" data-tab="delta">🔀 Delta Contract</button>
     <button class="tab-btn" data-tab="evaluate">🔍 Evaluate Image</button>
   </nav>
 
@@ -684,6 +744,102 @@
       <div class="card">
         <div class="card-label">Created Contract</div>
         <div id="contract-result-body"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ DELTA CONTRACT TAB ═══════════════ -->
+  <section id="tab-delta" class="tab-panel">
+    <div class="page-head">
+      <h2>Delta Contract</h2>
+      <p>Upload an initial state image (S0). The Visual Engine analyzes it against the contract target and generates a task plan + synthetic final state (SF).</p>
+    </div>
+
+    <div id="d-banner" class="banner"></div>
+
+    <div class="eval-grid">
+      <!-- Left: form -->
+      <div>
+        <div class="card">
+          <div class="card-label">Contract Definition</div>
+          <form id="delta-form" autocomplete="off">
+            <div class="row">
+              <div class="field">
+                <label for="d-domain">Domain <span class="req">*</span></label>
+                <input type="text" id="d-domain" placeholder="municipal_infrastructure" required>
+              </div>
+              <div class="field">
+                <label for="d-name">Contract Name <span class="req">*</span></label>
+                <input type="text" id="d-name" placeholder="Pothole Repair Delta" required>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="d-target">Target Object <span class="req">*</span></label>
+              <input type="text" id="d-target" placeholder="pothole" required>
+            </div>
+
+            <div class="field">
+              <label for="d-state">Required Final State (SF target) <span class="req">*</span></label>
+              <textarea id="d-state" placeholder="fully filled with dark asphalt, flush with surrounding road" required></textarea>
+            </div>
+
+            <div class="field">
+              <label for="d-negative">Failure Signals <span class="opt">(optional)</span></label>
+              <textarea id="d-negative" placeholder="loose gravel&#10;exposed base layer&#10;water pooling"></textarea>
+              <span class="hint">One per line or comma-separated</span>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label>Strictness Coefficient</label>
+                <div class="slider-row">
+                  <input type="range" id="d-strictness" min="0" max="1" step="0.01" value="0.80">
+                  <span class="slider-num" id="d-strictness-val">0.80</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>LoRA Adapter <span class="opt">(optional)</span></label>
+                <select id="d-lora-select">
+                  <option value="">None — zero-shot base model</option>
+                </select>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-label">Initial State — S0</div>
+          <div class="drop-zone" id="d-drop-zone">
+            <input type="file" id="d-file" accept="image/png,image/jpeg,image/webp,image/gif">
+            <div class="drop-icon">📸</div>
+            <div class="drop-hint">
+              <strong>Click to browse</strong> or drag &amp; drop<br>
+              Upload the current / before-state image
+            </div>
+            <div class="file-chosen" id="d-file-chosen">
+              <span>✓</span>
+              <span id="d-file-chosen-name"></span>
+            </div>
+          </div>
+          <div id="d-s0-preview-wrap" class="hidden" style="margin-top:10px;text-align:center">
+            <img id="d-s0-preview" src="" alt="S0 preview"
+              style="max-width:100%;max-height:180px;border-radius:6px;border:1px solid var(--border)">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="d-submit-btn" disabled>
+          Generate Delta Contract
+        </button>
+      </div>
+
+      <!-- Right: result -->
+      <div class="sticky-col">
+        <div id="d-empty" class="empty-state">
+          <div class="empty-icon">🔀</div>
+          <p>Submit S0 to generate<br>the task plan and SF description</p>
+        </div>
+        <div id="d-result" class="hidden"></div>
       </div>
     </div>
   </section>
@@ -1081,6 +1237,8 @@ function populateAdapterSelect() {
   // Keep only the "none" option then rebuild
   sel.innerHTML = '<option value="">None — zero-shot base model</option>';
 
+  syncDeltaAdapterSelect();
+
   if (adaptersCache.length === 0) {
     const hint = document.getElementById('c-lora-hint');
     hint.innerHTML = 'No adapters registered yet. Click <strong>+</strong> to add one.';
@@ -1178,6 +1336,193 @@ document.getElementById('la-save-btn').addEventListener('click', async () => {
     setLoading(btn, false, 'Save Adapter');
   }
 });
+
+/* ─── Delta Contract tab ─── */
+const dSlider = document.getElementById('d-strictness');
+const dSliderNum = document.getElementById('d-strictness-val');
+dSlider.addEventListener('input', () => dSliderNum.textContent = (+dSlider.value).toFixed(2));
+
+const dFileInput  = document.getElementById('d-file');
+const dFileChosen = document.getElementById('d-file-chosen');
+const dDropZone   = document.getElementById('d-drop-zone');
+
+function syncDeltaBtn() {
+  document.getElementById('d-submit-btn').disabled = !(dFileInput.files && dFileInput.files[0]);
+}
+
+dFileInput.addEventListener('change', () => {
+  const f = dFileInput.files[0];
+  if (!f) return;
+  document.getElementById('d-file-chosen-name').textContent = f.name;
+  dFileChosen.classList.add('show');
+  // Local preview
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wrap = document.getElementById('d-s0-preview-wrap');
+    document.getElementById('d-s0-preview').src = e.target.result;
+    wrap.classList.remove('hidden');
+  };
+  reader.readAsDataURL(f);
+  syncDeltaBtn();
+});
+
+['dragover','dragenter'].forEach(ev => dDropZone.addEventListener(ev, e => {
+  e.preventDefault(); dDropZone.classList.add('over');
+}));
+['dragleave','drop'].forEach(ev => dDropZone.addEventListener(ev, e => {
+  e.preventDefault(); dDropZone.classList.remove('over');
+  if (ev === 'drop' && e.dataTransfer.files[0]) {
+    dFileInput.files = e.dataTransfer.files;
+    dFileInput.dispatchEvent(new Event('change'));
+  }
+}));
+
+// Mirror adapter list into delta lora selector whenever adapters load
+function syncDeltaAdapterSelect() {
+  const sel = document.getElementById('d-lora-select');
+  sel.innerHTML = '<option value="">None — zero-shot base model</option>';
+  const byDomain = {};
+  adaptersCache.forEach(a => (byDomain[a.domain] = byDomain[a.domain] || []).push(a));
+  Object.entries(byDomain).forEach(([domain, list]) => {
+    const g = document.createElement('optgroup');
+    g.label = domain;
+    list.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a.adapter_id;
+      o.textContent = `${a.name}  ·  ${a.adapter_id}`;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  });
+}
+
+document.getElementById('d-submit-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('d-submit-btn');
+  setLoading(btn, true, 'Generating…');
+  banner('d-banner', null);
+
+  const fd = new FormData();
+  fd.append('domain',                 document.getElementById('d-domain').value.trim());
+  fd.append('name',                   document.getElementById('d-name').value.trim());
+  fd.append('target_object',          document.getElementById('d-target').value.trim());
+  fd.append('required_state',         document.getElementById('d-state').value.trim());
+  fd.append('negative_indicators',    document.getElementById('d-negative').value.trim());
+  fd.append('strictness_coefficient', dSlider.value);
+  const loraVal = document.getElementById('d-lora-select').value;
+  if (loraVal) fd.append('lora_id', loraVal);
+  fd.append('s0_file', dFileInput.files[0]);
+
+  try {
+    const res  = await fetch(API + '/delta-contracts', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (res.ok) {
+      renderDeltaResult(data);
+      // Poll until analysis completes (status: pending → complete | failed)
+      if (data.generation_status === 'pending') pollDelta(data.id);
+    } else {
+      banner('d-banner', false, '✗ ' + (data.detail || JSON.stringify(data)));
+    }
+  } catch (err) {
+    banner('d-banner', false, '✗ Network error: ' + err.message);
+  } finally {
+    setLoading(btn, false, 'Generate Delta Contract');
+    syncDeltaBtn();
+  }
+});
+
+async function pollDelta(deltaId) {
+  const maxAttempts = 30;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise(r => setTimeout(r, 3000));
+    try {
+      const res  = await fetch(API + '/delta-contracts/' + deltaId);
+      const data = await res.json();
+      if (res.ok && data.generation_status !== 'pending') {
+        renderDeltaResult(data);
+        return;
+      }
+    } catch { /* keep polling */ }
+  }
+}
+
+function renderDeltaResult(d) {
+  document.getElementById('d-empty').classList.add('hidden');
+  const el = document.getElementById('d-result');
+  el.classList.remove('hidden');
+
+  const isPending = d.generation_status === 'pending';
+  const isFailed  = d.generation_status === 'failed';
+
+  const statusHtml = isPending
+    ? '<div class="delta-status pending"><span class="spinner" style="border-color:rgba(210,153,34,.3);border-top-color:var(--warn)"></span> Analyzing S0…</div>'
+    : isFailed
+    ? '<div class="delta-status failed">✗ Analysis failed — check server logs</div>'
+    : '';
+
+  const tasksHtml = (d.tasks || []).map(t => `
+    <div class="task-item">
+      <div class="task-step">${t.step}</div>
+      <div class="task-body">
+        <div class="task-action">${esc(t.action)}</div>
+        <div class="task-detail">${esc(t.detail)}</div>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="result-card">
+      <div class="verdict-bar" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="font-size:13px;font-weight:600">${esc(d.name)}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(d.domain)}  ·  contract <code style="font-size:11px">${d.contract_id.slice(0,8)}…</code></div>
+      </div>
+
+      ${statusHtml}
+
+      <div class="result-body" style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- S0 image -->
+        <div>
+          <div class="delta-section-label">S0 — Initial State</div>
+          <img src="${d.s0_image_url}" alt="S0"
+            style="width:100%;max-height:200px;object-fit:cover;border-radius:var(--r);border:1px solid var(--border);margin-top:6px">
+        </div>
+
+        <!-- Gap analysis -->
+        ${d.gap_analysis ? `
+        <div>
+          <div class="delta-section-label">Gap Analysis</div>
+          <div class="delta-gap">${esc(d.gap_analysis)}</div>
+        </div>` : ''}
+
+        <!-- SF description -->
+        ${d.sf_description ? `
+        <div>
+          <div class="delta-section-label">SF — Target State Description</div>
+          <div class="rationale" style="border-left-color:var(--pass)">${esc(d.sf_description)}</div>
+        </div>` : ''}
+
+        <!-- Task plan -->
+        ${d.tasks && d.tasks.length ? `
+        <div>
+          <div class="delta-section-label">Task Plan (${d.tasks.length} steps)</div>
+          <div class="task-list" style="margin-top:8px">${tasksHtml}</div>
+        </div>` : ''}
+
+      </div>
+
+      <div class="result-footer">
+        <div class="meta">
+          <span class="meta-lbl">Delta ID</span>
+          <span class="meta-val">${d.id.slice(0,8)}…</span>
+        </div>
+        <div class="meta">
+          <span class="meta-lbl">Status</span>
+          <span class="meta-val" style="color:${d.generation_status==='complete'?'var(--pass)':d.generation_status==='failed'?'var(--fail)':'var(--warn)'}">
+            ${d.generation_status}
+          </span>
+        </div>
+      </div>
+    </div>`;
+}
 
 // Pre-load adapters and contracts so selectors are ready immediately
 loadAdapters();

@@ -44,6 +44,24 @@ class EvaluationRecord(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class DeltaContract(Base):
+    """Links an initial state image (S0) and a generated target image (SF) to a contract."""
+    __tablename__ = "delta_contracts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    contract_id: Mapped[str] = mapped_column(String(36), index=True)
+    # File paths relative to data/images/
+    s0_image_ref: Mapped[str] = mapped_column(Text)
+    sf_image_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # VLM-generated fields
+    gap_analysis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sf_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tasks: Mapped[list] = mapped_column(JSON, default=list)
+    # pending | complete | failed
+    generation_status: Mapped[str] = mapped_column(String(32), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class LoraAdapter(Base):
     __tablename__ = "lora_adapters"
 

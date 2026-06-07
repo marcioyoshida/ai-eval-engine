@@ -136,6 +136,32 @@ class VisualContractOracle:
 
         return _parse_result(raw)
 
+    def call_raw(self, image_source: str | Path, system_prompt: str) -> str:
+        """Call the model with a fully custom system prompt. Returns raw model text output."""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": str(image_source)},
+                    {"type": "text", "text": "Analyze this image."},
+                ],
+            },
+        ]
+        text = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        image_inputs, video_inputs = self._process_vision_info(messages)
+        inputs = self.processor(
+            text=[text], images=image_inputs, videos=video_inputs,
+            padding=True, return_tensors="pt",
+        ).to(self._device)
+        generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
+        new_tokens = generated_ids[:, inputs.input_ids.shape[1]:]
+        return self.processor.batch_decode(
+            new_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
+        )[0]
+
 
 def _parse_result(raw: str) -> EvaluationResult:
     """Extract the JSON payload from model output, tolerating surrounding text."""

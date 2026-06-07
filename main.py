@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from api.routes import adapters, contracts, evaluation
+from api.routes import adapters, contracts, delta_contracts, evaluation
 from db.session import init_db
 
 _UI_PATH = Path(__file__).parent / "static" / "index.html"
@@ -12,6 +12,7 @@ _UI_PATH = Path(__file__).parent / "static" / "index.html"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    Path("data/images").mkdir(parents=True, exist_ok=True)
     await init_db()
     yield
 
@@ -23,14 +24,24 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(adapters.router,  prefix="/adapters",  tags=["adapters"])
-app.include_router(contracts.router, prefix="/contracts", tags=["contracts"])
-app.include_router(evaluation.router, prefix="/evaluate", tags=["evaluation"])
+app.include_router(adapters.router,        prefix="/adapters",         tags=["adapters"])
+app.include_router(contracts.router,       prefix="/contracts",        tags=["contracts"])
+app.include_router(delta_contracts.router, prefix="/delta-contracts",  tags=["delta-contracts"])
+app.include_router(evaluation.router,      prefix="/evaluate",         tags=["evaluation"])
 
 
 @app.get("/", include_in_schema=False)
 async def ui():
     return FileResponse(_UI_PATH)
+
+
+@app.get("/images/{filename}", include_in_schema=False)
+async def serve_image(filename: str):
+    path = Path("data/images") / filename
+    if not path.exists():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(path)
 
 
 @app.get("/health")

@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import ContractDefinition, EvaluationRecord, FlaggedQueue, LoraAdapter
+from db.models import ContractDefinition, DeltaContract, EvaluationRecord, FlaggedQueue, LoraAdapter
 
 
 async def create_contract(session: AsyncSession, data: dict) -> ContractDefinition:
@@ -10,6 +10,31 @@ async def create_contract(session: AsyncSession, data: dict) -> ContractDefiniti
     await session.commit()
     await session.refresh(contract)
     return contract
+
+
+async def create_delta_contract(session: AsyncSession, data: dict) -> DeltaContract:
+    record = DeltaContract(**data)
+    session.add(record)
+    await session.commit()
+    await session.refresh(record)
+    return record
+
+
+async def update_delta_contract(session: AsyncSession, delta_id: str, updates: dict) -> DeltaContract | None:
+    result = await session.execute(select(DeltaContract).where(DeltaContract.id == delta_id))
+    record = result.scalar_one_or_none()
+    if not record:
+        return None
+    for k, v in updates.items():
+        setattr(record, k, v)
+    await session.commit()
+    await session.refresh(record)
+    return record
+
+
+async def get_delta_contract(session: AsyncSession, delta_id: str) -> DeltaContract | None:
+    result = await session.execute(select(DeltaContract).where(DeltaContract.id == delta_id))
+    return result.scalar_one_or_none()
 
 
 async def get_all_adapters(session: AsyncSession) -> list[LoraAdapter]:

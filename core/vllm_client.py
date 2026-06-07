@@ -95,6 +95,30 @@ class VLLMOrchestrator:
                 rationale=f"Inference error {exc.status_code}: {exc.message}",
             )
 
+    async def call_raw(self, image_source: str, system_prompt: str) -> str:
+        """Call the model with a fully custom system prompt. Returns raw model text output."""
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._default_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": image_source}},
+                            {"type": "text", "text": "Analyze this image."},
+                        ],
+                    },
+                ],
+                max_tokens=1024,
+                temperature=0.0,
+                extra_body={"chat_template_kwargs": {"enable_thinking": True}},
+            )
+            return response.choices[0].message.content or ""
+        except Exception as exc:
+            logger.error("vLLM call_raw error: %s", exc)
+            return ""
+
     async def run_juror_panel(
         self,
         image_source: str,
