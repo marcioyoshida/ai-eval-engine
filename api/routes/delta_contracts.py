@@ -56,11 +56,11 @@ async def create_delta(
 ):
     _IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Save S0 image
+    # Save S0 image — use absolute path so background task can locate it from any cwd.
     delta_id = str(uuid.uuid4())
     suffix = Path(s0_file.filename or "upload").suffix or ".jpg"
     s0_filename = f"s0_{delta_id}{suffix}"
-    s0_path = _IMAGES_DIR / s0_filename
+    s0_path = _IMAGES_DIR.resolve() / s0_filename
     s0_path.write_bytes(await s0_file.read())
 
     indicators = [i.strip() for i in negative_indicators.replace("\n", ",").split(",") if i.strip()]
@@ -158,7 +158,7 @@ async def _run_analysis(
 
     try:
         from core.delta_engine import analyze_s0
-        result = analyze_s0(s0_path, target_object, required_state, negative_indicators)
+        result = await analyze_s0(s0_path, target_object, required_state, negative_indicators)
         updates = {
             "gap_analysis": result["gap_analysis"],
             "sf_description": result["sf_description"],
@@ -166,7 +166,7 @@ async def _run_analysis(
             "generation_status": "complete",
         }
     except Exception as exc:
-        logger.error("Delta analysis failed for %s: %s", delta_id, exc)
+        logger.error("Delta analysis failed for %s: %s", delta_id, exc, exc_info=True)
         updates = {"generation_status": "failed"}
 
     async with AsyncSessionLocal() as session:

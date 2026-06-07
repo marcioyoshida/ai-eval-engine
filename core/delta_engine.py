@@ -11,8 +11,24 @@ import json
 import logging
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.inference import VisualContractOracle
 
 logger = logging.getLogger(__name__)
+
+# Module-level singleton — avoids reloading the 7B model on every delta request.
+_oracle: "VisualContractOracle | None" = None
+
+
+def _get_oracle() -> "VisualContractOracle":
+    global _oracle
+    if _oracle is None:
+        from core.config import settings
+        from core.inference import VisualContractOracle
+        _oracle = VisualContractOracle(settings.local_model_id)
+    return _oracle
 
 _DELTA_SYSTEM_TEMPLATE = """\
 You are a visual gap analysis and task planning engine.
@@ -84,7 +100,7 @@ def _fallback() -> dict:
     }
 
 
-def analyze_s0(
+async def analyze_s0(
     s0_path: str | Path,
     target_object: str,
     required_state: str,
@@ -95,22 +111,27 @@ def analyze_s0(
     Returns dict with gap_analysis, sf_description, tasks.
     SF image generation is stubbed — would call Flux.1/SDXL in production.
     """
+    import asyncio
     from core.config import settings
+
+    # Always use an absolute path so qwen_vl_utils can locate the file regardless of cwd.
+    abs_path = Path(s0_path).resolve()
+    if not abs_path.exists():
+        raise FileNotFoundError(f"S0 image not found: {abs_path}")
 
     system_prompt = _build_delta_prompt(target_object, required_state, negative_indicators)
 
     if settings.inference_backend == "vllm":
-        import asyncio
         from core.vllm_client import VLLMOrchestrator
         orchestrator = VLLMOrchestrator()
-        raw = asyncio.get_event_loop().run_until_complete(
-            orchestrator.call_raw(str(s0_path), system_prompt)
-        )
+        raw = await orchestrator.call_raw(str(abs_path), system_prompt)
     else:
-        from core.inference import VisualContractOracle
-        oracle = VisualContractOracle(settings.local_model_id)
-        raw = oracle.call_raw(s0_path, system_prompt)
+        oracle = _get_oracle()
+        # call_raw is synchronous/CPU-bound; run in executor to keep the event loop free.
+        loop = asyncio.get_event_loop()
+        raw = await loop.run_in_executor(None, oracle.call_raw, str(abs_path), system_prompt)
 
+    logger.debug("Delta raw output (%d chars): %r", len(raw), raw[:400])
     result = _parse_delta_output(raw)
     logger.info(
         "Delta analysis complete: %d tasks generated for object=%r",

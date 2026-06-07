@@ -127,12 +127,16 @@ class VisualContractOracle:
             return_tensors="pt",
         ).to(self._device)
 
-        generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
+        import torch
+        with torch.inference_mode():
+            generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
         # Slice off the input tokens — generate() returns the full sequence by default
         new_tokens = generated_ids[:, inputs.input_ids.shape[1]:]
+        n_new = new_tokens.shape[1]
         raw = self.processor.batch_decode(
             new_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
+        logger.debug("evaluate_evidence: generated %d new tokens, raw len=%d", n_new, len(raw))
 
         return _parse_result(raw)
 
@@ -156,11 +160,16 @@ class VisualContractOracle:
             text=[text], images=image_inputs, videos=video_inputs,
             padding=True, return_tensors="pt",
         ).to(self._device)
-        generated_ids = self.model.generate(**inputs, max_new_tokens=1024)
+        import torch
+        with torch.inference_mode():
+            generated_ids = self.model.generate(**inputs, max_new_tokens=2048)
         new_tokens = generated_ids[:, inputs.input_ids.shape[1]:]
-        return self.processor.batch_decode(
+        n_new = new_tokens.shape[1]
+        raw = self.processor.batch_decode(
             new_tokens, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )[0]
+        logger.debug("call_raw: generated %d new tokens, raw len=%d", n_new, len(raw))
+        return raw
 
 
 def _parse_result(raw: str) -> EvaluationResult:
