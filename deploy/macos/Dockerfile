@@ -1,6 +1,7 @@
-# macOS-compatible image — no CUDA, no nvidia-smi.
+# macOS / CPU deployment — no CUDA, no nvidia-smi.
 # MPS is a host-only runtime (Apple Silicon); Docker on macOS cannot access MPS,
-# so the container runs on CPU. For MPS inference run the app natively outside Docker.
+# so this container runs on CPU. For full MPS inference run natively:
+#   poetry run python main.py
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

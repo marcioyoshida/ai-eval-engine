@@ -1,8 +1,12 @@
+# macOS / CPU deployment — no GPU reservation.
+# MPS is a host-only runtime; Docker containers on macOS use CPU.
+# For MPS inference run natively: poetry run python main.py
+
 services:
   api:
     build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+      context: ../..
+      dockerfile: deploy/macos/Dockerfile
     ports:
       - "8000:8000"
     environment:
@@ -11,23 +15,22 @@ services:
       - INFERENCE_BACKEND=local       # "local" | "vllm"
       - VLLM_BASE_URL=http://vllm:8000/v1
       - VLLM_API_KEY=token
+      - DEVICE=cpu
     volumes:
-      - ../adapters:/app/adapters
+      - ../../adapters:/app/adapters
     depends_on:
       - redis
-    # No GPU reservation — MPS is host-only on macOS; container runs on CPU.
-    # For native MPS inference run: poetry run uvicorn main:app --reload
 
   worker:
     build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+      context: ../..
+      dockerfile: deploy/macos/Dockerfile
     command: poetry run celery -A worker.tasks worker --loglevel=info
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./eval_engine.db
       - REDIS_URL=redis://redis:6379/0
     volumes:
-      - ../adapters:/app/adapters
+      - ../../adapters:/app/adapters
     depends_on:
       - redis
 
@@ -46,11 +49,10 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      - ../adapters:/adapters
+      - ../../adapters:/adapters
     profiles:
       - production
-    # vLLM has no macOS build — use the native vllm serve command on a Linux box
-    # or point VLLM_BASE_URL at a remote vLLM server from your Mac.
+    # vLLM has no macOS build — point VLLM_BASE_URL at a remote Linux/CUDA vLLM server.
 
   redis:
     image: redis:7-alpine

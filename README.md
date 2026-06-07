@@ -64,8 +64,12 @@ ai-eval-engine/
 │                                   #         bootstrap_contract_data
 │
 ├── deploy/
-│   ├── Dockerfile                  # CUDA 12.4 base, Poetry, GPU-ready
-│   ├── docker-compose.yml          # api + worker + redis; vllm behind --profile production
+│   ├── cuda/
+│   │   ├── Dockerfile              # nvidia/cuda:12.4 base, local-gpu extras, DEVICE=cuda
+│   │   └── docker-compose.yml      # api + worker + redis + vLLM; nvidia GPU reservation
+│   ├── macos/
+│   │   ├── Dockerfile              # python:3.11-slim, local-mps extras, DEVICE=cpu
+│   │   └── docker-compose.yml      # api + worker + redis; no GPU reservation
 │   └── k8s-deployment.yaml        # K8s Deployment + LoadBalancer Service
 │
 └── tests/
@@ -82,7 +86,8 @@ ai-eval-engine/
 - Python 3.11+
 - [Poetry](https://python-poetry.org/docs/#installation)
 - Redis (only needed to run background workers)
-- NVIDIA GPU with 16 GB+ VRAM for `local` inference mode (RTX 3090/4090 or A100)
+- NVIDIA GPU with 16 GB+ VRAM for CUDA `local` inference (RTX 3090/4090 or A100)
+- Apple Silicon Mac for MPS `local` inference (M1/M2/M3)
 - No GPU needed to run the API + tests in `vllm` mode against an external server
 
 ### 1. Install dependencies
@@ -91,7 +96,10 @@ ai-eval-engine/
 # CPU-only (API, tests, worker — no model inference)
 poetry install
 
-# With local GPU inference support
+# macOS Apple Silicon (MPS)
+poetry install --extras local-mps
+
+# Linux CUDA
 poetry install --extras local-gpu
 ```
 
@@ -105,9 +113,11 @@ cp .env.example .env
 ### 3. Start the API
 
 ```bash
+# localhost only
 poetry run uvicorn main:app --reload
-# API available at http://localhost:8000
-# Interactive docs at http://localhost:8000/docs
+
+# accessible on local network (e.g. from another machine at http://<your-ip>:8000)
+poetry run python main.py
 ```
 
 ### 4. Register a contract
@@ -189,12 +199,17 @@ Contracts without a `lora_id` fall back to zero-shot base model inference.
 
 ---
 
-## Docker Compose (local stack)
+## Docker Compose
 
+**Linux / CUDA:**
 ```bash
-cd deploy
-docker compose up        # api + worker + redis
-docker compose --profile production up  # adds the vLLM server
+docker compose -f deploy/cuda/docker-compose.yml up
+docker compose -f deploy/cuda/docker-compose.yml --profile production up  # + vLLM
+```
+
+**macOS (container on CPU; for MPS run natively with `python main.py`):**
+```bash
+docker compose -f deploy/macos/docker-compose.yml up
 ```
 
 ---
