@@ -40,6 +40,7 @@ local-mps  = ["torch", "torchvision", "qwen-vl-utils"]
 # Linux CUDA — install torch separately: pip install torch --index-url https://download.pytorch.org/whl/cu121
 local-gpu  = ["torch", "torchvision", "qwen-vl-utils"]
 
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.0"
 pytest-asyncio = "^0.23.0"
