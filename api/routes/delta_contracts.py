@@ -11,7 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.crud import create_contract, create_delta_contract, get_delta_contract, update_delta_contract
+from db.crud import create_contract, create_delta_contract, get_all_delta_contracts, get_delta_contract, update_delta_contract
 from db.session import get_session
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,28 @@ class DeltaContractResponse(BaseModel):
     sf_description: str | None
     tasks: list[TaskItem]
     generation_status: str
+
+
+class DeltaSummary(BaseModel):
+    id: str
+    domain: str
+    gap_analysis: str | None
+    sf_description: str | None
+
+
+@router.get("", response_model=list[DeltaSummary])
+async def list_deltas(session: AsyncSession = Depends(get_session)):
+    """Return completed delta contracts — used to populate UI autocomplete suggestions."""
+    rows = await get_all_delta_contracts(session)
+    return [
+        DeltaSummary(
+            id=delta.id,
+            domain=contract.domain,
+            gap_analysis=delta.gap_analysis,
+            sf_description=delta.sf_description,
+        )
+        for delta, contract in rows
+    ]
 
 
 @router.post("", response_model=DeltaContractResponse, status_code=201)
