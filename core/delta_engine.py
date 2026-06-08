@@ -100,6 +100,23 @@ def _fallback() -> dict:
     }
 
 
+def _derive_failure_signals(gap_analysis: str) -> list[str]:
+    """Extract discrete failure signals from gap analysis text.
+
+    Each sentence / clause describing a defect in S0 becomes one failure signal
+    that the evaluation contract will watch for.
+    """
+    import re
+    # Split on sentence endings, semicolons, newlines, and bullet markers
+    chunks = re.split(r'(?<=[.!?])\s+|;\s*|\n+', gap_analysis)
+    signals: list[str] = []
+    for chunk in chunks:
+        chunk = re.sub(r'^[-–•*\d.)]+\s*', '', chunk).strip().rstrip('.,;')
+        if len(chunk) > 8:
+            signals.append(chunk)
+    return signals[:8]
+
+
 async def _generate_sf_image(
     sf_description: str,
     delta_id: str,
@@ -207,6 +224,12 @@ async def analyze_s0(
         "Delta analysis complete: %d tasks generated for object=%r",
         len(result["tasks"]), target_object,
     )
+
+    # Derive contract fields from VLM output:
+    #   required_state  ← sf_description (the VLM described exactly what success looks like)
+    #   failure_signals ← sentences extracted from gap_analysis (what's wrong = what to watch for)
+    result["derived_required_state"] = result.get("sf_description", "")
+    result["derived_failure_signals"] = _derive_failure_signals(result.get("gap_analysis", ""))
 
     result["sf_image_ref"] = None
     if settings.generate_sf_image and delta_id and result.get("sf_description"):

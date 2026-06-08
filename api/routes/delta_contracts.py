@@ -1,9 +1,8 @@
-"""POST /delta-contracts — create a contract with S0/SF image pair and VLM task plan."""
+"""Delta Contracts — create S0/SF image pair with VLM-derived task plan and contract fields."""
 
 from __future__ import annotations
 
 import logging
-import tempfile
 import uuid
 from pathlib import Path
 
@@ -11,7 +10,15 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.crud import create_contract, create_delta_contract, get_all_delta_contracts, get_delta_contract, update_delta_contract
+from db.crud import (
+    create_contract,
+    create_delta_contract,
+    get_all_delta_contracts,
+    get_contract_by_id,
+    get_delta_contract,
+    update_contract,
+    update_delta_contract,
+)
 from db.session import get_session
 
 logger = logging.getLogger(__name__)
@@ -33,6 +40,7 @@ class DeltaContractResponse(BaseModel):
     name: str
     target_object: str
     required_state: str
+    negative_indicators: list[str]
     s0_image_url: str
     sf_image_url: str | None
     gap_analysis: str | None
@@ -69,8 +77,8 @@ async def create_delta(
     domain: str = Form(...),
     name: str = Form(...),
     target_object: str = Form(...),
-    required_state: str = Form(...),
-    negative_indicators: str = Form(default=""),
+    # required_state and negative_indicators are NOT collected from the user.
+    # The VLM derives them from the gap analysis after S0 is analysed.
     strictness_coefficient: float = Form(default=0.80),
     lora_id: str | None = Form(default=None),
     s0_file: UploadFile = File(...),
@@ -85,17 +93,15 @@ async def create_delta(
     s0_path = _IMAGES_DIR.resolve() / s0_filename
     s0_path.write_bytes(await s0_file.read())
 
-    indicators = [i.strip() for i in negative_indicators.replace("\n", ",").split(",") if i.strip()]
-
-    # Create the base ContractDefinition first
+    # Create the base ContractDefinition with placeholder state — filled in after analysis.
     contract = await create_contract(
         session,
         {
             "domain": domain,
             "name": name,
             "target_object": target_object,
-            "required_state": required_state,
-            "negative_indicators": indicators,
+            "required_state": "",
+            "negative_indicators": [],
             "strictness_coefficient": strictness_coefficient,
             "lora_id": lora_id or None,
         },
@@ -112,15 +118,13 @@ async def create_delta(
         },
     )
 
-    # Run VLM analysis in background so the HTTP response is immediate
     background_tasks.add_task(
         _run_analysis,
         delta_id=delta_id,
+        contract_id=contract.id,
         s0_path=str(s0_path),
         images_dir=_IMAGES_DIR.resolve(),
         target_object=target_object,
-        required_state=required_state,
-        negative_indicators=indicators,
     )
 
     return DeltaContractResponse(
@@ -129,7 +133,8 @@ async def create_delta(
         domain=domain,
         name=name,
         target_object=target_object,
-        required_state=required_state,
+        required_state="",
+        negative_indicators=[],
         s0_image_url=f"/images/{s0_filename}",
         sf_image_url=None,
         gap_analysis=None,
@@ -141,8 +146,6 @@ async def create_delta(
 
 @router.get("/{delta_id}", response_model=DeltaContractResponse)
 async def get_delta(delta_id: str, session: AsyncSession = Depends(get_session)):
-    from db.crud import get_contract_by_id
-
     delta = await get_delta_contract(session, delta_id)
     if not delta:
         raise HTTPException(status_code=404, detail="Delta contract not found")
@@ -160,6 +163,7 @@ async def get_delta(delta_id: str, session: AsyncSession = Depends(get_session))
         name=contract.name,
         target_object=contract.target_object,
         required_state=contract.required_state,
+        negative_indicators=contract.negative_indicators or [],
         s0_image_url=f"/images/{delta.s0_image_ref}",
         sf_image_url=f"/images/{delta.sf_image_ref}" if delta.sf_image_ref else None,
         gap_analysis=delta.gap_analysis,
@@ -171,35 +175,48 @@ async def get_delta(delta_id: str, session: AsyncSession = Depends(get_session))
 
 async def _run_analysis(
     delta_id: str,
+    contract_id: str,
     s0_path: str,
     images_dir: Path,
     target_object: str,
-    required_state: str,
-    negative_indicators: list[str],
 ) -> None:
-    """Background task: call the delta engine and persist results."""
+    """Background task: VLM gap analysis → derive contract fields → persist everything."""
     from db.session import AsyncSessionLocal
 
     try:
         from core.delta_engine import analyze_s0
+
+        # Pass empty strings for required_state / negative_indicators — the VLM
+        # will ignore them and derive them from the image + target_object alone.
         result = await analyze_s0(
             s0_path,
             target_object,
-            required_state,
-            negative_indicators,
+            required_state="",
+            negative_indicators=[],
             delta_id=delta_id,
             images_dir=images_dir,
         )
-        updates = {
+
+        delta_updates = {
             "gap_analysis": result["gap_analysis"],
             "sf_description": result["sf_description"],
             "tasks": result["tasks"],
             "sf_image_ref": result.get("sf_image_ref"),
             "generation_status": "complete",
         }
+        contract_updates = {
+            "required_state": result.get("derived_required_state", ""),
+            "negative_indicators": result.get("derived_failure_signals", []),
+        }
+
     except Exception as exc:
         logger.error("Delta analysis failed for %s: %s", delta_id, exc, exc_info=True)
-        updates = {"generation_status": "failed"}
+        delta_updates = {"generation_status": "failed"}
+        contract_updates = {}
 
     async with AsyncSessionLocal() as session:
-        await update_delta_contract(session, delta_id, updates)
+        await update_delta_contract(session, delta_id, delta_updates)
+
+    if contract_updates:
+        async with AsyncSessionLocal() as session:
+            await update_contract(session, contract_id, contract_updates)

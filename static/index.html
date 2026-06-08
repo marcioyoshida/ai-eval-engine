@@ -808,17 +808,6 @@
               <input type="text" id="d-target" placeholder="pothole" required>
             </div>
 
-            <div class="field ac-wrap">
-              <label for="d-state">Required Final State (SF target) <span class="req">*</span></label>
-              <textarea id="d-state" placeholder="fully filled with dark asphalt, flush with surrounding road" required></textarea>
-            </div>
-
-            <div class="field ac-wrap">
-              <label for="d-negative">Failure Signals <span class="opt">(optional)</span></label>
-              <textarea id="d-negative" placeholder="loose gravel&#10;exposed base layer&#10;water pooling"></textarea>
-              <span class="hint">One per line or comma-separated</span>
-            </div>
-
             <div class="row">
               <div class="field">
                 <label>Strictness Coefficient</label>
@@ -1435,8 +1424,6 @@ document.getElementById('d-submit-btn').addEventListener('click', async () => {
   fd.append('domain',                 document.getElementById('d-domain').value.trim());
   fd.append('name',                   document.getElementById('d-name').value.trim());
   fd.append('target_object',          document.getElementById('d-target').value.trim());
-  fd.append('required_state',         document.getElementById('d-state').value.trim());
-  fd.append('negative_indicators',    document.getElementById('d-negative').value.trim());
   fd.append('strictness_coefficient', dSlider.value);
   const loraVal = document.getElementById('d-lora-select').value;
   if (loraVal) fd.append('lora_id', loraVal);
@@ -1528,6 +1515,24 @@ function renderDeltaResult(d) {
         <div>
           <div class="delta-section-label">SF — Target State Description</div>
           <div class="rationale" style="border-left-color:var(--pass)">${esc(d.sf_description)}</div>
+        </div>` : ''}
+
+        <!-- Inferred contract fields -->
+        ${d.generation_status === 'complete' && (d.required_state || (d.negative_indicators && d.negative_indicators.length)) ? `
+        <div style="border:1px solid var(--border);border-radius:var(--r);padding:12px;background:rgba(88,166,255,0.04)">
+          <div class="delta-section-label" style="color:var(--primary);margin-bottom:8px">⚡ Inferred Contract Fields</div>
+          ${d.required_state ? `
+          <div style="margin-bottom:10px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Required Final State</div>
+            <div style="font-size:13px;line-height:1.5">${esc(d.required_state)}</div>
+          </div>` : ''}
+          ${d.negative_indicators && d.negative_indicators.length ? `
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Failure Signals</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${d.negative_indicators.map(s => `<span style="font-size:12px;background:var(--fail-bg);border:1px solid var(--fail-border);color:var(--fail);border-radius:4px;padding:2px 8px">${esc(s)}</span>`).join('')}
+            </div>
+          </div>` : ''}
         </div>` : ''}
 
         <!-- Task plan -->
@@ -1648,11 +1653,10 @@ function makeTextareaSuggest(fieldId, getSuggestions) {
   });
 }
 
-// Wire up textarea autocompletes
+// Wire up textarea autocompletes (Register Contract tab only —
+// Delta Contract tab derives these fields from VLM inference)
 makeTextareaSuggest('c-state',    () => deltaSuggestions.gapAnalyses);
-makeTextareaSuggest('d-state',    () => deltaSuggestions.gapAnalyses);
 makeTextareaSuggest('c-negative', () => deltaSuggestions.sfDescriptions);
-makeTextareaSuggest('d-negative', () => deltaSuggestions.sfDescriptions);
 
 // Pre-load adapters and contracts so selectors are ready immediately
 loadAdapters();

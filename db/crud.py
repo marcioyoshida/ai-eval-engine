@@ -4,6 +4,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.models import ContractDefinition, DeltaContract, EvaluationRecord, FlaggedQueue, LoraAdapter
 
 
+async def update_contract(session: AsyncSession, contract_id: str, updates: dict) -> ContractDefinition | None:
+    result = await session.execute(select(ContractDefinition).where(ContractDefinition.id == contract_id))
+    record = result.scalar_one_or_none()
+    if not record:
+        return None
+    for k, v in updates.items():
+        setattr(record, k, v)
+    await session.commit()
+    await session.refresh(record)
+    return record
+
+
 async def get_all_delta_contracts(session: AsyncSession) -> list[tuple[DeltaContract, ContractDefinition]]:
     result = await session.execute(
         select(DeltaContract, ContractDefinition)
