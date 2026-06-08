@@ -611,6 +611,156 @@
 
     .hidden { display: none !important; }
 
+    /* ── Training tab ── */
+    .train-zones {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .train-zone-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
+    }
+    .train-zone-label.pass { color: var(--pass); }
+    .train-zone-label.fail { color: var(--fail); }
+    .drop-zone-sm {
+      border: 2px dashed var(--border);
+      border-radius: var(--r);
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .drop-zone-sm:hover, .drop-zone-sm.over { border-color: var(--primary); background: var(--primary-glow); }
+    .drop-zone-sm.pass:hover, .drop-zone-sm.pass.over { border-color: var(--pass); background: var(--pass-bg); }
+    .drop-zone-sm.fail:hover, .drop-zone-sm.fail.over { border-color: var(--fail); background: var(--fail-bg); }
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .img-thumb {
+      position: relative;
+      border-radius: 4px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+    }
+    .img-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .img-thumb-rm {
+      position: absolute;
+      top: 2px; right: 2px;
+      background: rgba(0,0,0,.65);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 17px; height: 17px;
+      cursor: pointer;
+      font-size: 9px;
+      line-height: 17px;
+      text-align: center;
+      padding: 0;
+    }
+    .img-count {
+      font-size: 11px;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+    .img-count.pass { color: var(--pass); }
+    .img-count.fail { color: var(--fail); }
+    .rank-options { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rank-btn {
+      padding: 5px 12px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all .15s;
+    }
+    .rank-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-glow);
+      color: var(--primary);
+    }
+    .lr-options { display: flex; gap: 6px; flex-wrap: wrap; }
+    .lr-btn {
+      padding: 4px 10px;
+      border-radius: var(--r);
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-family: monospace;
+      transition: all .15s;
+    }
+    .lr-btn.active { border-color: var(--primary); background: var(--primary-glow); color: var(--primary); }
+    .collapsible-hdr {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      user-select: none;
+      padding: 8px 0 4px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .collapsible-hdr .caret {
+      font-size: 9px;
+      transition: transform .2s;
+      display: inline-block;
+    }
+    .collapsible-hdr.open .caret { transform: rotate(90deg); }
+    .collapsible-body { display: none; padding-top: 10px; }
+    .collapsible-body.open { display: block; }
+    .module-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .module-chip {
+      padding: 4px 10px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-family: monospace;
+      transition: all .15s;
+    }
+    .module-chip.active { border-color: var(--purple); background: rgba(163,113,247,.1); color: var(--purple); }
+    .job-status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .job-status-badge.queued  { background: rgba(139,148,158,.15); color: var(--muted); }
+    .job-status-badge.running { background: rgba(210,153,34,.15);  color: var(--warn); }
+    .job-status-badge.complete{ background: var(--pass-bg);        color: var(--pass); }
+    .job-status-badge.failed  { background: var(--fail-bg);        color: var(--fail); }
+    .kv-grid {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 4px 14px;
+      font-size: 12px;
+    }
+    .kv-key { color: var(--muted); white-space: nowrap; }
+    .kv-val { color: var(--text); word-break: break-all; }
+    .kv-val.monospace { font-family: monospace; }
+
     /* ── Autocomplete dropdown ── */
     .ac-wrap { position: relative; }
     .ac-list {
@@ -656,6 +806,7 @@
     <button class="tab-btn active" data-tab="contracts">📋 Register Contract</button>
     <button class="tab-btn" data-tab="delta">🔀 Delta Contract</button>
     <button class="tab-btn" data-tab="evaluate">🔍 Evaluate Image</button>
+    <button class="tab-btn" data-tab="train">🧠 Train LoRA</button>
   </nav>
 
   <!-- ═══════════════ CONTRACTS TAB ═══════════════ -->
@@ -945,6 +1096,215 @@
 
     </div>
   </section>
+
+  <!-- ═══════════════ TRAIN LORA TAB ═══════════════ -->
+  <section id="tab-train" class="tab-panel">
+    <div class="page-head">
+      <h2>Train LoRA Adapter</h2>
+      <p class="page-sub">Fine-tune a vision-language LoRA on labeled PASS / FAIL images</p>
+    </div>
+
+    <div class="two-col">
+      <!-- Left: config form -->
+      <div>
+
+        <!-- Adapter Identity -->
+        <div class="card">
+          <h3 class="card-title">Adapter Identity</h3>
+          <div class="row">
+            <div class="field">
+              <label for="tr-name">Adapter Name <span class="req">*</span></label>
+              <input type="text" id="tr-name" placeholder="Pothole Detector v1" required>
+            </div>
+            <div class="field">
+              <label for="tr-id">Adapter ID <span class="req">*</span></label>
+              <input type="text" id="tr-id" placeholder="pothole-detector-v1" required>
+              <span class="field-hint">Slug — used as the vLLM model name</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="tr-domain">Domain <span class="req">*</span></label>
+              <input type="text" id="tr-domain" list="domain-list" placeholder="municipal_infrastructure" required>
+            </div>
+            <div class="field">
+              <label for="tr-category">Category <span class="opt">(optional)</span></label>
+              <input type="text" id="tr-category" placeholder="road_surface">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="tr-base-model">Base Model</label>
+              <select id="tr-base-model">
+                <option value="Qwen/Qwen2.5-VL-7B-Instruct" selected>Qwen2.5-VL-7B-Instruct</option>
+                <option value="Qwen/Qwen2.5-VL-3B-Instruct">Qwen2.5-VL-3B-Instruct</option>
+                <option value="Qwen/Qwen2.5-VL-72B-Instruct">Qwen2.5-VL-72B-Instruct</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="tr-contract">Link to Contract <span class="opt">(optional)</span></label>
+              <select id="tr-contract">
+                <option value="">— none —</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="tr-notes">Notes <span class="opt">(optional)</span></label>
+            <textarea id="tr-notes" rows="2" placeholder="Trained on Q2 audit images…"></textarea>
+          </div>
+        </div>
+
+        <!-- Training Data -->
+        <div class="card">
+          <h3 class="card-title">Training Data</h3>
+          <div class="train-zones">
+            <!-- PASS zone -->
+            <div>
+              <div class="train-zone-label pass">✅ PASS examples</div>
+              <div class="drop-zone-sm pass" id="tz-pass"
+                   ondragover="event.preventDefault();this.classList.add('over')"
+                   ondragleave="this.classList.remove('over')"
+                   ondrop="handleDrop(event,'pass')"
+                   onclick="document.getElementById('tr-pass-input').click()">
+                <input type="file" id="tr-pass-input" multiple accept="image/*" class="hidden"
+                       onchange="addFiles('pass',this.files)">
+                Click or drag PASS images here
+              </div>
+              <div class="img-grid" id="pass-grid"></div>
+              <div class="img-count pass" id="pass-count"></div>
+            </div>
+            <!-- FAIL zone -->
+            <div>
+              <div class="train-zone-label fail">❌ FAIL examples</div>
+              <div class="drop-zone-sm fail" id="tz-fail"
+                   ondragover="event.preventDefault();this.classList.add('over')"
+                   ondragleave="this.classList.remove('over')"
+                   ondrop="handleDrop(event,'fail')"
+                   onclick="document.getElementById('tr-fail-input').click()">
+                <input type="file" id="tr-fail-input" multiple accept="image/*" class="hidden"
+                       onchange="addFiles('fail',this.files)">
+                Click or drag FAIL images here
+              </div>
+              <div class="img-grid" id="fail-grid"></div>
+              <div class="img-count fail" id="fail-count"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LoRA Configuration -->
+        <div class="card">
+          <h3 class="card-title">LoRA Configuration</h3>
+          <div class="field">
+            <label>Rank (r)</label>
+            <div class="rank-options" id="rank-options">
+              <button type="button" class="rank-btn" data-rank="4">4</button>
+              <button type="button" class="rank-btn" data-rank="8">8</button>
+              <button type="button" class="rank-btn active" data-rank="16">16</button>
+              <button type="button" class="rank-btn" data-rank="32">32</button>
+              <button type="button" class="rank-btn" data-rank="64">64</button>
+            </div>
+            <input type="hidden" id="tr-rank" value="16">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="tr-alpha">Alpha <span class="opt">(optional — defaults to rank × 2)</span></label>
+              <input type="number" id="tr-alpha" placeholder="auto" min="1" max="256">
+            </div>
+            <div class="field">
+              <label for="tr-dropout">Dropout
+                <span id="tr-dropout-val" style="font-weight:600;color:var(--primary)">0.05</span>
+              </label>
+              <input type="range" id="tr-dropout" min="0" max="0.5" step="0.01" value="0.05">
+            </div>
+          </div>
+        </div>
+
+        <!-- Hyperparameters -->
+        <div class="card">
+          <h3 class="card-title">Hyperparameters</h3>
+          <div class="field">
+            <label>Learning Rate</label>
+            <div class="lr-options" id="lr-options">
+              <button type="button" class="lr-btn" data-lr="5e-5">5e-5</button>
+              <button type="button" class="lr-btn" data-lr="1e-4">1e-4</button>
+              <button type="button" class="lr-btn active" data-lr="2e-4">2e-4</button>
+              <button type="button" class="lr-btn" data-lr="5e-4">5e-4</button>
+            </div>
+            <input type="hidden" id="tr-lr" value="2e-4">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="tr-epochs">Epochs</label>
+              <input type="number" id="tr-epochs" value="3" min="1" max="100">
+            </div>
+            <div class="field">
+              <label for="tr-batch">Batch Size</label>
+              <input type="number" id="tr-batch" value="2" min="1" max="32">
+            </div>
+            <div class="field">
+              <label for="tr-seq">Max Seq Length</label>
+              <input type="number" id="tr-seq" value="2048" min="512" max="8192" step="512">
+            </div>
+          </div>
+
+          <!-- Advanced (collapsible) -->
+          <div class="collapsible-hdr" id="adv-toggle">
+            <span class="caret">▶</span> Advanced
+          </div>
+          <div class="collapsible-body" id="adv-body">
+            <div class="row">
+              <div class="field">
+                <label for="tr-grad-accum">Gradient Accum Steps</label>
+                <input type="number" id="tr-grad-accum" value="4" min="1" max="128">
+              </div>
+              <div class="field">
+                <label for="tr-warmup">Warmup Steps</label>
+                <input type="number" id="tr-warmup" value="10" min="0" max="1000">
+              </div>
+              <div class="field">
+                <label for="tr-save-steps">Save Steps</label>
+                <input type="number" id="tr-save-steps" value="100" min="10" max="10000">
+              </div>
+            </div>
+            <div class="field">
+              <label>Target Modules</label>
+              <div class="module-chips" id="module-chips">
+                <button type="button" class="module-chip active" data-mod="q_proj">q_proj</button>
+                <button type="button" class="module-chip active" data-mod="v_proj">v_proj</button>
+                <button type="button" class="module-chip" data-mod="k_proj">k_proj</button>
+                <button type="button" class="module-chip" data-mod="o_proj">o_proj</button>
+                <button type="button" class="module-chip" data-mod="gate_proj">gate_proj</button>
+                <button type="button" class="module-chip" data-mod="up_proj">up_proj</button>
+                <button type="button" class="module-chip" data-mod="down_proj">down_proj</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="tr-output">Output Path <span class="opt">(optional)</span></label>
+              <input type="text" id="tr-output" placeholder="adapters/pothole-detector-v1">
+            </div>
+          </div>
+        </div>
+
+        <div id="tr-banner" class="banner"></div>
+        <button class="btn btn-primary" id="tr-submit-btn">Start Training</button>
+      </div>
+
+      <!-- Right: job result / history -->
+      <div class="sticky-col">
+        <div id="tr-empty" class="empty-state">
+          <div class="empty-icon">🎓</div>
+          <p>Configure and submit a training job<br>to see progress here</p>
+        </div>
+        <div id="tr-result" class="hidden"></div>
+
+        <div id="tr-history" class="hidden" style="margin-top:16px">
+          <h3 class="card-title" style="padding:0 0 8px">Recent Jobs</h3>
+          <div id="tr-history-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 </div>
 
 <script>
@@ -1023,6 +1383,7 @@ async function loadContracts() {
       sel.appendChild(o);
     });
     populateDomainList(contracts.map(c => c.domain));
+    populateTrainContractSelect(contracts);
   } catch {
     sel.innerHTML = '<option value="">Could not load contracts</option>';
   }
@@ -1657,6 +2018,275 @@ function makeTextareaSuggest(fieldId, getSuggestions) {
 // Delta Contract tab derives these fields from VLM inference)
 makeTextareaSuggest('c-state',    () => deltaSuggestions.gapAnalyses);
 makeTextareaSuggest('c-negative', () => deltaSuggestions.sfDescriptions);
+
+/* ════════════════════════════════════════════════════════════════
+   TRAIN LORA TAB
+   ════════════════════════════════════════════════════════════════ */
+
+// ── File stores (File objects, not just names) ──
+const trainFiles = { pass: [], fail: [] };
+
+function addFiles(label, fileList) {
+  const arr = trainFiles[label];
+  for (const f of fileList) {
+    if (!arr.find(x => x.name === f.name && x.size === f.size)) arr.push(f);
+  }
+  renderImgGrid(label);
+}
+
+function handleDrop(e, label) {
+  e.preventDefault();
+  document.getElementById('tz-' + label).classList.remove('over');
+  addFiles(label, e.dataTransfer.files);
+}
+
+function removeFile(label, idx) {
+  trainFiles[label].splice(idx, 1);
+  renderImgGrid(label);
+}
+
+function renderImgGrid(label) {
+  const grid  = document.getElementById(label + '-grid');
+  const count = document.getElementById(label + '-count');
+  const arr   = trainFiles[label];
+  grid.innerHTML = arr.map((f, i) => {
+    const url = URL.createObjectURL(f);
+    return `<div class="img-thumb">
+      <img src="${url}" loading="lazy">
+      <button class="img-thumb-rm" onclick="removeFile('${label}',${i})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+  count.textContent = arr.length ? `${arr.length} image${arr.length > 1 ? 's' : ''} selected` : '';
+}
+
+// ── Rank pill selector ──
+document.querySelectorAll('#rank-options .rank-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#rank-options .rank-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tr-rank').value = btn.dataset.rank;
+  });
+});
+
+// ── LR preset selector ──
+document.querySelectorAll('#lr-options .lr-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#lr-options .lr-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tr-lr').value = btn.dataset.lr;
+  });
+});
+
+// ── Module chip toggle ──
+document.querySelectorAll('#module-chips .module-chip').forEach(chip => {
+  chip.addEventListener('click', () => chip.classList.toggle('active'));
+});
+
+// ── Dropout slider label ──
+document.getElementById('tr-dropout').addEventListener('input', function() {
+  document.getElementById('tr-dropout-val').textContent = (+this.value).toFixed(2);
+});
+
+// ── Advanced collapsible ──
+document.getElementById('adv-toggle').addEventListener('click', function() {
+  this.classList.toggle('open');
+  document.getElementById('adv-body').classList.toggle('open');
+});
+
+// ── Populate contract selector in Train tab ──
+function populateTrainContractSelect(contractList) {
+  const sel = document.getElementById('tr-contract');
+  while (sel.options.length > 1) sel.remove(1);
+  contractList.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `${c.name} (${c.domain})`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── Submit training job ──
+document.getElementById('tr-submit-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('tr-submit-btn');
+
+  const adapterId = document.getElementById('tr-id').value.trim();
+  const adapterName = document.getElementById('tr-name').value.trim();
+  const domain = document.getElementById('tr-domain').value.trim();
+
+  if (!adapterId || !adapterName || !domain) {
+    banner('tr-banner', false, 'Adapter Name, ID, and Domain are required.');
+    return;
+  }
+  if (trainFiles.pass.length === 0 && trainFiles.fail.length === 0) {
+    banner('tr-banner', false, 'Add at least one training image.');
+    return;
+  }
+
+  setLoading(btn, true, 'Submitting…');
+  banner('tr-banner', null, '');
+
+  const modules = [...document.querySelectorAll('#module-chips .module-chip.active')]
+    .map(c => c.dataset.mod).join(',');
+
+  const fd = new FormData();
+  fd.append('adapter_name', adapterName);
+  fd.append('adapter_id', adapterId);
+  fd.append('domain', domain);
+  const cat = document.getElementById('tr-category').value.trim();
+  if (cat) fd.append('category', cat);
+  fd.append('base_model', document.getElementById('tr-base-model').value);
+  const notes = document.getElementById('tr-notes').value.trim();
+  if (notes) fd.append('notes', notes);
+  const contractId = document.getElementById('tr-contract').value;
+  if (contractId) fd.append('contract_id', contractId);
+
+  fd.append('lora_rank',   document.getElementById('tr-rank').value);
+  const alpha = document.getElementById('tr-alpha').value.trim();
+  if (alpha) fd.append('lora_alpha', alpha);
+  fd.append('lora_dropout', document.getElementById('tr-dropout').value);
+  if (modules) fd.append('target_modules', modules);
+
+  fd.append('learning_rate', document.getElementById('tr-lr').value);
+  fd.append('num_epochs',    document.getElementById('tr-epochs').value);
+  fd.append('batch_size',    document.getElementById('tr-batch').value);
+  fd.append('max_seq_length',document.getElementById('tr-seq').value);
+  fd.append('gradient_accumulation_steps', document.getElementById('tr-grad-accum').value);
+  fd.append('warmup_steps',  document.getElementById('tr-warmup').value);
+  fd.append('save_steps',    document.getElementById('tr-save-steps').value);
+  const outPath = document.getElementById('tr-output').value.trim();
+  if (outPath) fd.append('output_path', outPath);
+
+  trainFiles.pass.forEach(f => fd.append('pass_images', f));
+  trainFiles.fail.forEach(f => fd.append('fail_images', f));
+
+  try {
+    const res = await fetch(`${API}/training/jobs`, { method: 'POST', body: fd });
+    const job = await res.json();
+    if (!res.ok) {
+      banner('tr-banner', false, job.detail || 'Submission failed');
+      return;
+    }
+    renderTrainingResult(job);
+    document.getElementById('tr-empty').classList.add('hidden');
+    document.getElementById('tr-result').classList.remove('hidden');
+    pollTrainingJob(job.id);
+    loadTrainingHistory();
+  } catch (err) {
+    banner('tr-banner', false, err.message);
+  } finally {
+    setLoading(btn, false, 'Start Training');
+  }
+});
+
+function renderTrainingResult(job) {
+  const statusBadge = `<span class="job-status-badge ${job.status}">${job.status}</span>`;
+  const cfg = job.config || {};
+  const el = document.getElementById('tr-result');
+  el.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 class="card-title" style="margin:0">${esc(job.adapter_name)}</h3>
+        <span id="tr-job-badge">${statusBadge}</span>
+      </div>
+      <div class="kv-grid">
+        <span class="kv-key">Job ID</span><span class="kv-val monospace">${esc(job.id)}</span>
+        <span class="kv-key">Adapter ID</span><span class="kv-val monospace">${esc(job.adapter_id)}</span>
+        <span class="kv-key">Domain</span><span class="kv-val">${esc(job.domain)}</span>
+        <span class="kv-key">Images</span>
+        <span class="kv-val">
+          <span style="color:var(--pass)">✅ ${job.pass_count} PASS</span>
+          &nbsp;
+          <span style="color:var(--fail)">❌ ${job.fail_count} FAIL</span>
+        </span>
+        <span class="kv-key">Rank</span><span class="kv-val">${cfg.lora_rank ?? '—'}</span>
+        <span class="kv-key">Alpha</span><span class="kv-val">${cfg.lora_alpha ?? '—'}</span>
+        <span class="kv-key">LR</span><span class="kv-val monospace">${cfg.learning_rate ?? '—'}</span>
+        <span class="kv-key">Epochs</span><span class="kv-val">${cfg.num_epochs ?? '—'}</span>
+        <span class="kv-key">Batch</span><span class="kv-val">${cfg.batch_size ?? '—'}</span>
+        <span class="kv-key">Modules</span>
+        <span class="kv-val monospace">${(cfg.target_modules || []).join(', ') || '—'}</span>
+      </div>
+      ${job.output_path ? `<div style="margin-top:10px;font-size:12px;color:var(--muted)">Output: <code>${esc(job.output_path)}</code></div>` : ''}
+      ${job.error ? `<div class="banner error" style="margin-top:10px">${esc(job.error)}</div>` : ''}
+    </div>`;
+}
+
+// Update only the badge without re-rendering the whole card
+function updateJobBadge(status) {
+  const el = document.getElementById('tr-job-badge');
+  if (el) el.innerHTML = `<span class="job-status-badge ${status}">${status}</span>`;
+}
+
+let _pollTimer = null;
+function pollTrainingJob(jobId) {
+  clearTimeout(_pollTimer);
+  async function tick() {
+    try {
+      const res = await fetch(`${API}/training/jobs/${jobId}`);
+      if (!res.ok) return;
+      const job = await res.json();
+      updateJobBadge(job.status);
+      if (job.status === 'complete') {
+        renderTrainingResult(job);
+        loadAdapters();
+        return;
+      }
+      if (job.status === 'failed') {
+        renderTrainingResult(job);
+        return;
+      }
+    } catch (_) {}
+    _pollTimer = setTimeout(tick, 3000);
+  }
+  _pollTimer = setTimeout(tick, 2000);
+}
+
+async function loadTrainingHistory() {
+  try {
+    const res = await fetch(`${API}/training/jobs`);
+    if (!res.ok) return;
+    const jobs = await res.json();
+    if (!jobs.length) return;
+    const hist = document.getElementById('tr-history');
+    const list = document.getElementById('tr-history-list');
+    hist.classList.remove('hidden');
+    list.innerHTML = jobs.map(j => `
+      <div class="card" style="padding:10px 14px;margin-bottom:8px;cursor:pointer"
+           onclick="selectHistoryJob('${esc(j.id)}')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:600;font-size:13px">${esc(j.adapter_name)}</span>
+          <span class="job-status-badge ${j.status}">${j.status}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">
+          ${esc(j.adapter_id)} · ${esc(j.domain)} ·
+          <span style="color:var(--pass)">✅${j.pass_count}</span>
+          <span style="color:var(--fail)">❌${j.fail_count}</span>
+        </div>
+      </div>`).join('');
+  } catch (_) {}
+}
+
+async function selectHistoryJob(jobId) {
+  try {
+    const res = await fetch(`${API}/training/jobs/${jobId}`);
+    if (!res.ok) return;
+    const job = await res.json();
+    document.getElementById('tr-empty').classList.add('hidden');
+    document.getElementById('tr-result').classList.remove('hidden');
+    renderTrainingResult(job);
+    if (job.status === 'queued' || job.status === 'running') pollTrainingJob(jobId);
+  } catch (_) {}
+}
+
+// Load history when tab is opened
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  if (btn.dataset.tab === 'train') {
+    btn.addEventListener('click', () => {
+      populateTrainContractSelect(contracts);
+      loadTrainingHistory();
+    });
+  }
+});
 
 // Pre-load adapters and contracts so selectors are ready immediately
 loadAdapters();

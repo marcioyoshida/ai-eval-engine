@@ -4,7 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from api.routes import adapters, contracts, delta_contracts, evaluation
+from api.routes import adapters, contracts, delta_contracts, evaluation, training
 from db.session import init_db
 
 _UI_PATH = Path(__file__).parent / "static" / "index.html"
@@ -28,6 +28,7 @@ app.include_router(adapters.router,        prefix="/adapters",         tags=["ad
 app.include_router(contracts.router,       prefix="/contracts",        tags=["contracts"])
 app.include_router(delta_contracts.router, prefix="/delta-contracts",  tags=["delta-contracts"])
 app.include_router(evaluation.router,      prefix="/evaluate",         tags=["evaluation"])
+app.include_router(training.router,        prefix="/training/jobs",    tags=["training"])
 
 
 @app.get("/", include_in_schema=False)

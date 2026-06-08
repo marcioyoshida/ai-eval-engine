@@ -80,6 +80,31 @@ class LoraAdapter(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class LoraTrainingJob(Base):
+    """A fine-tuning job that trains a LoRA adapter from labeled PASS/FAIL images."""
+    __tablename__ = "lora_training_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    # Target adapter identity — matches LoraAdapter.adapter_id when promoted
+    adapter_name: Mapped[str] = mapped_column(String(256))
+    adapter_id: Mapped[str] = mapped_column(String(256), index=True)
+    domain: Mapped[str] = mapped_column(String(128))
+    base_model: Mapped[str] = mapped_column(String(256), default="Qwen/Qwen2.5-VL-7B-Instruct")
+    # Optional contract this adapter targets
+    contract_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Absolute paths to training images grouped by label
+    pass_image_refs: Mapped[list] = mapped_column(JSON, default=list)
+    fail_image_refs: Mapped[list] = mapped_column(JSON, default=list)
+    # Full training config (LoRA params + hyperparameters)
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
+    # queued | running | complete | failed
+    status: Mapped[str] = mapped_column(String(32), default="queued")
+    output_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class FlaggedQueue(Base):
     __tablename__ = "flagged_queue"
 

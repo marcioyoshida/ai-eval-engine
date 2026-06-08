@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import ContractDefinition, DeltaContract, EvaluationRecord, FlaggedQueue, LoraAdapter
+from db.models import ContractDefinition, DeltaContract, EvaluationRecord, FlaggedQueue, LoraAdapter, LoraTrainingJob
 
 
 async def update_contract(session: AsyncSession, contract_id: str, updates: dict) -> ContractDefinition | None:
@@ -120,6 +120,38 @@ async def flag_for_review(session: AsyncSession, data: dict) -> FlaggedQueue:
     await session.commit()
     await session.refresh(item)
     return item
+
+
+async def create_training_job(session: AsyncSession, data: dict) -> LoraTrainingJob:
+    job = LoraTrainingJob(**data)
+    session.add(job)
+    await session.commit()
+    await session.refresh(job)
+    return job
+
+
+async def get_training_job(session: AsyncSession, job_id: str) -> LoraTrainingJob | None:
+    result = await session.execute(select(LoraTrainingJob).where(LoraTrainingJob.id == job_id))
+    return result.scalar_one_or_none()
+
+
+async def update_training_job(session: AsyncSession, job_id: str, updates: dict) -> LoraTrainingJob | None:
+    result = await session.execute(select(LoraTrainingJob).where(LoraTrainingJob.id == job_id))
+    record = result.scalar_one_or_none()
+    if not record:
+        return None
+    for k, v in updates.items():
+        setattr(record, k, v)
+    await session.commit()
+    await session.refresh(record)
+    return record
+
+
+async def list_training_jobs(session: AsyncSession) -> list[LoraTrainingJob]:
+    result = await session.execute(
+        select(LoraTrainingJob).order_by(LoraTrainingJob.created_at.desc())
+    )
+    return list(result.scalars().all())
 
 
 async def get_recent_success_rate(session: AsyncSession, contract_id: str, window: int) -> float:
