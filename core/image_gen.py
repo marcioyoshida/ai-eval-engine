@@ -9,12 +9,15 @@ Model variants:
 
 Both need a HuggingFace account with accepted model terms:
     huggingface-cli login
+
+Note: FluxImageGenerator is NOT a singleton. Callers must instantiate it,
+generate, then call .offload() to release device memory before it goes
+out of scope. This keeps peak memory bounded when Flux runs alongside VLM.
 """
 
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,19 +25,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_generator: "FluxImageGenerator | None" = None
-
-
-def _get_generator() -> "FluxImageGenerator":
-    global _generator
-    if _generator is None:
-        from core.config import settings
-        _generator = FluxImageGenerator(settings.flux_model_id)
-    return _generator
-
 
 class FluxImageGenerator:
-    """Wraps FluxPipeline for local SF image synthesis."""
+    """Wraps FluxPipeline for local SF image synthesis.
+
+    Lifecycle: instantiate → generate() → offload() → (let go out of scope)
+    """
 
     def __init__(self, model_id: str = "black-forest-labs/FLUX.1-schnell"):
         try:
@@ -56,10 +52,9 @@ class FluxImageGenerator:
         self.pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=dtype)
 
         if self._device == "cuda":
-            # Offload model layers to CPU when not in use — handles sub-24 GB cards.
+            # Offload model components to CPU between forward passes — handles sub-24 GB cards.
             self.pipe.enable_model_cpu_offload()
         else:
-            # MPS and CPU: move the whole pipeline to the target device.
             self.pipe = self.pipe.to(self._device)
 
         logger.info(
@@ -82,7 +77,11 @@ class FluxImageGenerator:
         guidance = (
             guidance_scale
             if guidance_scale is not None
-            else (settings.flux_guidance_scale if settings.flux_guidance_scale is not None else (0.0 if self._is_schnell else 3.5))
+            else (
+                settings.flux_guidance_scale
+                if settings.flux_guidance_scale is not None
+                else (0.0 if self._is_schnell else 3.5)
+            )
         )
 
         with torch.inference_mode():
@@ -94,7 +93,17 @@ class FluxImageGenerator:
                 guidance_scale=guidance,
             )
 
+        return result.images[0]
+
+    def offload(self) -> None:
+        """Move pipeline to CPU and release device cache. Call after generate()."""
+        import torch
+        try:
+            self.pipe.to("cpu")
+        except Exception:
+            pass
         if self._device == "mps":
             torch.mps.empty_cache()
-
-        return result.images[0]
+        elif self._device == "cuda":
+            torch.cuda.empty_cache()
+        logger.debug("FluxImageGenerator offloaded from %s", self._device)

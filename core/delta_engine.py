@@ -107,30 +107,62 @@ async def _generate_sf_image(
 ) -> str | None:
     """Generate synthetic SF image from sf_description via local Flux.1.
 
+    Memory strategy: the VLM oracle and Flux pipeline can't both fit on device
+    at the same time (~26 GB combined). We temporarily move the oracle to CPU,
+    run Flux, then restore the oracle — peak device memory stays bounded.
+
     Returns the filename (relative to images_dir) or None on failure.
     """
     import asyncio
+    import torch
 
     try:
-        from core.image_gen import _get_generator
+        from core.image_gen import FluxImageGenerator
         from core.config import settings
+        from core.inference import _detect_device
 
-        gen = _get_generator()
+        device = _detect_device(settings.device)
         filename = f"sf_{delta_id}.png"
         output_path = images_dir / filename
 
-        loop = asyncio.get_event_loop()
-        image = await loop.run_in_executor(
-            None,
-            lambda: gen.generate(
-                prompt=sf_description,
-                width=settings.flux_image_width,
-                height=settings.flux_image_height,
-            ),
-        )
-        image.save(output_path)
-        logger.info("SF image saved to %s", output_path)
-        return filename
+        # ── Step 1: vacate device memory used by the VLM oracle ──────────────
+        oracle_was_on_device = _oracle is not None and device in ("mps", "cuda")
+        if oracle_was_on_device:
+            logger.info("Offloading VLM oracle to CPU to make room for Flux")
+            _oracle.model.to("cpu")  # type: ignore[union-attr]
+            if device == "mps":
+                torch.mps.empty_cache()
+            else:
+                torch.cuda.empty_cache()
+
+        gen: FluxImageGenerator | None = None
+        try:
+            # ── Step 2: load Flux, generate, save ────────────────────────────
+            gen = FluxImageGenerator(settings.flux_model_id)
+            loop = asyncio.get_running_loop()
+            image = await loop.run_in_executor(
+                None,
+                lambda: gen.generate(  # type: ignore[union-attr]
+                    prompt=sf_description,
+                    width=settings.flux_image_width,
+                    height=settings.flux_image_height,
+                ),
+            )
+            image.save(output_path)
+            logger.info("SF image saved to %s", output_path)
+            return filename
+
+        finally:
+            # ── Step 3: release Flux memory unconditionally ──────────────────
+            if gen is not None:
+                gen.offload()
+                del gen
+
+            # ── Step 4: restore VLM oracle to its original device ────────────
+            if oracle_was_on_device:
+                logger.info("Restoring VLM oracle to %s", device)
+                _oracle.model.to(device)  # type: ignore[union-attr]
+
     except Exception as exc:
         logger.error("SF image generation failed: %s", exc, exc_info=True)
         return None
@@ -166,7 +198,7 @@ async def analyze_s0(
     else:
         oracle = _get_oracle()
         # call_raw is synchronous/CPU-bound; run in executor to keep the event loop free.
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         raw = await loop.run_in_executor(None, oracle.call_raw, str(abs_path), system_prompt)
 
     logger.debug("Delta raw output (%d chars): %r", len(raw), raw[:400])
